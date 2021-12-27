@@ -1,0 +1,847 @@
+﻿@using FJDPXT.Model
+@using FJDPXT.EntityClass
+@{
+    Layout = null;
+    //ETicketVo dbETicket = ViewBag.dbETicket;
+}
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>票证查询结果</title>
+    <link href="~/Content/images/log.png" type="image/x-icon" rel="shortcut icon" />
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" type="text/css" href="~/Content/app-assets/fonts/simple-line-icons/style.css">
+    <!--系统维护样式表-->
+    <link href="~/Content/css/ElectronicsTicket.css" rel="stylesheet" />
+    <style>
+        .myContent > div {
+            height: 50px;
+            border: 1px solid;
+            text-align: center;
+            font-size: 12px;
+            overflow: hidden;
+        }
+        /*网页打印下的样式 用于隐藏一些不用打印的元素*/
+        @@media print {
+            .no-print {
+                display: none;
+            }
+
+            .show-print {
+                display: inline-block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!--1.0 页面内容-->
+    <div class="container pb-5">
+        <h4 class="text-center py-3">票证查询结果</h4>
+        <div class="content p-3">
+            <!--操作栏-->
+            <div class="row mt-3" id="btnS">
+                <div class="col-12 text-center">
+                    <div class="form-group text-center">
+                        <b class="navbar-brand">票证操作</b>
+                        <button type="button" class="btn btn-outline-primary mr-2" onclick="printChange()">打印换开</button>
+                        <button type="button" class="btn btn-outline-success mr-2" onclick="changeFlight()">ET航班更改</button>
+                        @*<button type="button" class="btn btn-outline-primary mr-2" onclick="changeTicket()">电子客票换开</button>*@
+                        <button type="button" class="btn btn-outline-danger mr-2" onclick="invalid()">作废</button>
+                        <button type="button" class="btn btn-outline-danger mr-2" onclick="refund()">退票</button>
+                        <button type="button" class="btn btn-outline-danger mr-2" onclick="involuntaryRefund()">非自愿退票</button>
+                        <button type="button" class="btn btn-outline-primary mr-2" onclick="involuntaryChange()">非自愿换开</button>
+                        <button type="button" class="btn btn-outline-success mr-2" onclick="involuntaryUpdate()">非自愿更改</button>
+                        <button type="button" class="btn btn-outline-warning mr-2" onclick="T4Print()">T4联打印</button>
+                    </div>
+                </div>
+            </div>
+            <!--隐藏域-->
+            <div class="hide">
+                <input type="hidden" id="flightDate" value="" />
+                <input type="hidden" id="orange" value="" />
+                <input type="hidden" id="destination" value="" />
+                <input type="hidden" id="segmentNo" value="" />
+                <input type="hidden" id="ticketNo" value="" />
+                <input type="hidden" id="flightCode" value="" />
+                <input type="hidden" id="StarTime" value="" />
+                <input type="hidden" id="EndTimee" value="" />
+                <input type="hidden" id="TypeID" value="" />
+                <input type="hidden" id="Code" value="" />
+                <input type="hidden" id="userID" value="@Session["userID"]" />
+                <input type="hidden" id="ETicketID" value="@ViewBag.ETicketID" />
+                <!--1.2 ET航班更改 / 非自愿更改（使用）-->
+                <input type="hidden" id="ETPNRID" value="@ViewBag.PNRID" />
+                <input type="hidden" id="ETPNRNo" />
+                <input type="hidden" id="PNRSegmentID" /><!--航段ID-->
+                <input type="hidden" id="PNRTicketingID" value="@ViewBag.PNRTicketingID" /><!--出票组ID-->
+            </div>
+            <!--.col- 针对所有设备-->
+            <div class="row mt-3 myContent">
+                <!--第一行-->
+                <div class="col-1" style="border-bottom:none;">填开单位:<br> ISSUED BY</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; font-weight: bolder;">中国东方航空公司<br>CHINA EASTERN AIRLINES</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;">客票</div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">始发地/目的地:<br>ORIGIN/DESTINATION</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dLine"></div>
+                <div class="col-3" style="border-bottom:none; border-left:none;">出票日期和地点:<br>DETE AND PLACE ISSUE</div>
+
+                <!--第二行-->
+                <div class="col-3" style="border-bottom:none;">签注<br>RESTRICTION/ENDORSEMENTS（CARBON）</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; border-top:none;">PASSENGER TICKET</div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">定座记录编号:<br>BOOKING REFERENCE</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dSeatNu"></div>
+                <div class="col-3" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dTimeAndStation"></div>
+
+                <!--第三行-->
+                <div class="col-3" style="border-bottom:none;">旅客姓名（不得转让）<br>NAME OF PASSENGER NOT TRANSFERABLE</div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">旅客编号<br />LVKE BIANHAO</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dPassengerNo"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">换开凭证<br>ISSUED IN EXCHANGE FDR</div>
+                <div class="col-3" style="border-bottom:none; border-left:none;">营业员<br>AGENT </div>
+
+                <!--第四行-->
+                <div class="col-3" style="border-bottom:none; line-height:48px;font-weight: bolder;" id="dPassengerName"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">连续客票<br>CONJUNCTTON TTCKET(S)</div>
+                <div class="col-2" style="border-bottom:none; border-left:none;"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none;"></div>
+                <div class="col-3" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dUserName"></div>
+
+                <!--第五行-->
+                <div class="col-2" style="border-bottom:none;background-color:#EFEFEF;">仅在票面上所列航班作为运输使用</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">承运人</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">航班号</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">座位等级</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">日期时间</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">订座情况</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;background-color:#EFEFEF;">票价级别/<br /> 客票类别</div>
+                <div class="col-2" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">客票生效日期</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;background-color:#EFEFEF;">有效截止日期</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;line-height:48px;background-color:#EFEFEF;">免费行李额</div>
+
+
+                <div class="col-2" style="border-bottom:none; border-top:none;background-color:#EFEFEF;">GOOD FOR PASSAGE  POINTSOUTLINED</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">CARRIER</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">FLIGHT</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">CLASS</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">DATETIME</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">STATUS</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">FARE BASIS<br />DESIGNATOR</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">NOT VALID BEFORE</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">NOT VALID VFTER</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; border-top:none;background-color:#EFEFEF;">ALIOW</div>
+
+                <!--第六行-->
+
+                <div class="col-2 " style="border-bottom:none;font-weight: bolder;"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dFlightCode"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dCabinTypeName"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dDateStr"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;">OK</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dCabinTypeName"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dDStar"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dETime"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;">20KG</div>
+
+                <!--第八行-->
+                <div class="col-2" style="border-bottom:none;">自 FROM<br />至 TO</div>
+                <div class="col-3" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dFromTo"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">票价<br />FARE</div>
+                <div class="col-1" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;" id="dPrice"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none;">付款方式<br />FORM OFPAYMENT</div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;">虚拟支付</div>
+
+
+                <div class="col-2" style="border-bottom:none;">实付等值货币<br />EQUIV.FARE PD. </div>
+                <div class="col-1" style="border-bottom:none; border-left:none;font-weight: bolder;line-height:48px" id="PayMoney"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none; line-height:48px;">票价计算</div>
+                <div class="col-7" style="border-bottom:none; border-left:none; line-height:48px;font-weight: bolder;">支付金额 = 总金额 - 代理费（总金额*3%）</div>
+
+                <!--第九行-->
+                <div class="col-2" style="border-bottom:none;">代理费<br />TAX</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;font-weight: bolder;line-height:48px" id="agencyFee"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none;">总价<br />TOTAL</div>
+                <div class="col-1" style="border-bottom:none; border-left:none;font-weight: bolder;line-height:48px"id="totalPrice"></div>
+                <div class="col-7" style="border-bottom:none; border-left:none;">旅客须知:  SUBJECT TO CONDITIONS  OF CONTRACT ON THE ITINERARY</div>
+
+                <!--第十行-->
+                <div class="col-1" style="border-bottom:none;background-color:#EFEFEF;">票联<br />CPN</div>
+                <div class="col-2 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">航空公司代号<br />AIRLINE CODE</div>
+                <div class="col-2 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">客票顺序号<br />FORM AND SERIAL NUMBER</div>
+                <div class="col-1 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">检查号<br />CK</div>
+                <div class="col-1 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">原出票ORIGINAL ISSUE</div>
+                <div class="col-1 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">凭证号DOCUMENT NUMBER</div>
+                <div class="col-1 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">地点<br />PLACE</div>
+                <div class="col-1 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">日期<br />DATE</div>
+                <div class="col-2 " style="border-bottom:none; border-left:none;background-color:#EFEFEF;">营业员号<br />AGENT'S NUMERICCODE</div>
+
+                <div class="col-1" style="border-bottom:none;"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none; font-weight: bolder;"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dNo"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dPNo"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dTicketNo"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dS"></div>
+                <div class="col-1" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dDate"></div>
+                <div class="col-2" style="border-bottom:none; border-left:none; font-weight: bolder;" id="dJobNumber"></div>
+
+                <!--状态栏-->
+                <div class="col-3" style="line-height:48px;background-color:#EFEFEF;">票联状态:</div>
+                <div class="col-3" style="border-left:none;line-height:48px;font-weight: bolder;" id="dTicketStatus"></div>
+                <div class="col-3" style="border-left:none;line-height:48px;background-color:#EFEFEF;">发票状态:</div>
+                <div class="col-3" style="border-left:none;line-height:48px;font-weight: bolder;" id="dInvoiceStatus"></div>
+            </div>
+            <!--操作栏-->
+            <div class="row mt-3" id="btnS2">
+                <div class="col-12 text-center">
+                    <div class="form-group text-center">
+                        <button type="button" class="btn btn-outline-primary mr-2" id="btnBack">返回</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--1.1 打印换开（模态框）-->
+    <div class="modal fade" id="modPrintChange" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                @*模态框头部*@
+                <div class="modal-header">
+                    <h5 class="modal-title">打印换开</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">&times;</span>
+                        <span class="sr-only">Close</span>
+                    </button>
+                </div>
+                @*模态框内容*@
+                <div class="modal-body">
+                    <form id="formPrintChange" class="form-horizontal" onsubmit="return false;">
+                        <!--重置表单-->
+                        <input type="reset" hidden />
+                        <div class="form-group row p-1">
+                            <label class="col-5 col-form-label text-right">换开本票票号为：E781-</label>
+                            <input type="text" class="form-control col-5" id="newTicketNo" name="newTicketNo" value="@ViewBag.NewTicketNo" />
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <div class="form-group text-center">
+                                    <button type="button" class="btn btn-outline-primary mr-2" onclick="btnPrintChange()">确认</button>
+                                    <button type="button" class="btn btn-outline-secondary ml-2" data-dismiss="modal">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--` 电子客票换开 / 非自愿换开（模态框）-->
+    <div class="modal fade" id="modChangeTicket" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                @*模态框头部*@
+                <div class="modal-header">
+                    <h5 class="modal-title">电子客票换开</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">&times;</span>
+                        <span class="sr-only">Close</span>
+                    </button>
+                </div>
+                @*模态框内容*@
+                <div class="modal-body">
+                    <form id="formChangeTicket" class="form-horizontal" onsubmit="return false;">
+                        <!--重置表单-->
+                        <input type="reset" hidden />
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">PNR：</label>
+                            <select id="CPNRNo" name="PNRNo" lay-verify="" lay-search class="form-control ow-city  col-4">
+                                <option value="0" data-code="">--请选择--</option>
+                                
+                            </select>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">航段序号：</label>
+                            <select id="CsegmentNo" name="segmentNo" lay-verify="" lay-search class="form-control ow-city  col-4">
+                                <option value="0" data-code="">--请选择--</option>
+                               
+                            </select>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">旅客编号 ：</label>
+                            <input type="text" class="form-control col-4" id="CpassengerNo" />
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">加收票款 ：</label>
+                            <input type="text" class="form-control col-4" id="ticketPrice" />
+                        </div>
+                        <div class="form-group row" id="DivInvoluntaryChange">
+                            <label class="col-5 col-form-label text-right">换开原因 ：</label>
+                            <input type="text" class="form-control col-4" id="cChangeReason" />
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <div class="form-group text-center">
+                                    <button type="button" class="btn btn-outline-primary mr-2" onclick="btnChangeTicket()">支付</button>
+                                    <button type="button" class="btn btn-outline-secondary ml-2" data-dismiss="modal">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--1.3 退票 / 非自愿退票（模态框）-->
+    <div class="modal fade" id="modRefund" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                @*模态框头部*@
+                <div class="modal-header">
+                    <h5 class="modal-title">退票</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">&times;</span>
+                        <span class="sr-only">Close</span>
+                    </button>
+                </div>
+                @*模态框内容*@
+                <div class="modal-body">
+                    <form id="formRefund" class="form-horizontal" onsubmit="return false;">
+                        <!--重置表单-->
+                        <input type="reset" hidden />
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">货币单位：</label>
+                            <label class="col-5 col-form-label text-left" id="DW">CNY</label>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">票面价格：</label>
+                            @*<label class="col-5 col-form-label text-left" id="RPrice"></label>*@
+                            <input type="text" class="form-control col-4" readonly id="RPrice" />
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">退款金额 ：</label>
+                            <input type="text" class="form-control col-4" readonly id="refundMoney" />
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">代理费退回 ：</label>
+                            <input type="text" class="form-control col-4" readonly id="refundAgencyFee" />
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">实退金额 ：</label>
+                            @*<label class="col-5 col-form-label text-left" id="actualRefunfMoney"></label>*@
+                            <input type="text" class="form-control col-4" readonly id="actualRefunfMoney" />
+                        </div>
+                        <div class="form-group row" id="DivInvoluntaryRefund">
+                            <label class="col-5 col-form-label text-right">退票原因 ：</label>
+                            <input type="text" class="form-control col-4" id="rChangeReason" />
+                            <input type="hidden" id="isVoluntary" value="" />
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <div class="form-group text-center">
+                                    <button type="button" class="btn btn-outline-primary mr-2" onclick="btnRefund()">退款</button>
+                                    <button type="button" class="btn btn-outline-secondary ml-2" data-dismiss="modal">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--1.4 作废（模态框）-->
+    <div class="modal fade" id="modInvalid" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                @*模态框头部*@
+                <div class="modal-header">
+                    <h5 class="modal-title">作废</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">&times;</span>
+                        <span class="sr-only">Close</span>
+                    </button>
+                </div>
+                @*模态框内容*@
+                <div class="modal-body">
+                    <form id="formInvalid" class="form-horizontal" onsubmit="return false;">
+                        <!--重置表单-->
+                        <input type="reset" hidden />
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">货币单位：</label>
+                            <label class="col-5 col-form-label text-left" id="DW"> CNY（¥）</label>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">票面金额：</label>
+                            <input type="text" class="form-control col-4" readonly id="IPrice" />
+                            @*<label class="col-5 col-form-label text-left" id="IPrice"></label>*@
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">代理费 ：</label>
+                            @*<label class="col-5 col-form-label text-left" id="decAgencyFee"></label>*@
+                            <input type="text" class="form-control col-4" readonly id="decAgencyFee"/>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">实退金额 ：</label>
+                            <input type="text" class="form-control col-4" readonly id="IactualRefunfMoney" />
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-5 col-form-label text-right">作废单号 ：</label>
+                            <input type="text" class="form-control col-4" id="InvalidCode" readonly value="@ViewBag.NewInvalidCode" />
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <div class="form-group text-center">
+                                    <button type="button" class="btn btn-outline-primary mr-2" onclick="btnInvalid()">作废</button>
+                                    <button type="button" class="btn btn-outline-secondary ml-2" data-dismiss="modal">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 航段选择模板 *@
+    <div class="card d-none" id="segmentCardT">
+        <div class="card-header pt-0 pb-0">
+            <div class="row">
+                <div class="col-12 p-0">
+                    <button id="btnCollapseT" class="btn btn-block btn-collapse-t" type="button" data-toggle="collapse" data-target="#segmentCollapseT">
+                        <div class="row segmentTitle justify-content-between">
+                            <div class="col-1 text-left">
+                                <p><i class="icon-plane">&nbsp;</i><b data-id="title">单程</b></p>
+                            </div>
+                            <div class="col-1"></div>
+                            <div class="col-10 col-md-4 col-lg-4">
+                                <b>航线：</b><span id="line-ow" data-id="site">广州——北京</span>
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-4 text-right">
+                                @* <i class="icon-list"></i> *@
+                                <b>日期：</b> <span id="date-ow" data-id="date">2019-12-10</span>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="segmentCollapseT" class="collapse" data-parent="#accordionSegment">
+            <div class="card-body p-0">
+                <table lay-filter="tableFlightT" id="tableFlightT">
+                    <thead>
+                        <tr>
+                            <th lay-data="{field:'index',align:'center', width:40}">序号</th>
+                            <th lay-data="{field:'flightCode',align:'center', width:80}">航班号</th>
+                            <th lay-data="{field:'flighrSite',align:'center', width:160}">始发地 - 目的地</th>
+                            <th lay-data="{field:'flightTime',align:'center', width:120}">起飞 - 到达</th>
+                            <th lay-data="{field:'planType',align:'center', width:80}">机型</th>
+                            <th lay-data="{field:'seatInfo'}">座位/座位数/价格(人民币)</th>
+                        </tr>
+                    </thead>
+                    <tbody data-id="tbodyFlight">
+                        @* 行数据模板 *@
+                        @* <tr> *@
+                        @*     <td>1</td> *@
+                        @*     <td>MU5317</td> *@
+                        @*     <td>乌鲁木齐 到 齐齐哈尔</td> *@
+                        @*     <td>10:00 - 12:20</td> *@
+                        @*     <td>A380</td> *@
+                        @*     <td> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F=7 ￥1790"></div> *@
+                        @*     </td> *@
+                        @* </tr> *@
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/Content/app-assets/vendors/js/core/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <!--1 页面内容-->
+    <script>
+        var layer
+        var ETicketID = $("#ETicketID").val();
+        var flightCabins;
+
+        $.getJSON("/ElectronicsTicket/TicketModify/SelectTicketById?ETicketID=" + ETicketID,
+        function (data) {
+            if (data == null) {
+                layer.alert("当前数据不存在!", { icon: 0, title: '提交失败', offset: '100px' });
+            }
+            else {
+                $("#dLine").text(data.orangeName + "/" + data.destinationName);//始发地/目的地
+                $("#dSeatNu").text(data.seatNum);//定座记录编号
+                $("#dTimeAndStation").text(data.TicketingTime + "/" + data.orangeName); //出票日期和地点
+                $("#dUserName").text(data.userName);//营业员
+                $("#dJobNumber").text(data.JobNumber);//营业员号码
+
+                $("#dPassengerName").text(data.passengerName);//旅客姓名
+                $("#dPassengerNo").text(data.passengerNo);//旅客编号
+                $("#dFlightCode").text(data.flightCode);//航班号
+                $("#dCabinTypeName").text(data.cabinTypeName);//座位等级
+                $("#dDateStr").text(data.flightDateStr + "/" + data.departureTime);//日期/时间
+                $("#dDStar").text(data.TicketingTime);//客票生效日期
+                $("#dETime").text(data.flightDateStr);//有效截止日期
+                $("#dFromTo").text(data.orangeName + "/" + data.destinationName);//自 FROM 至 TO
+
+
+                $("#dCabinTypeName").text(data.cabinTypeName);//定座类别                 
+                $("#dStard").text(data.orangeName);//始发地
+                $("#dEnd").text(data.destinationName);//目的地
+                $("#dPrice").text(data.ticketPrice);//票价
+                $("#dPrice2").text(data.ticketPrice + "人民币");//票价                 
+
+                $("#totalPrice").text(data.ticketPrice);//总价
+                $("#agencyFee").text("￥" + (data.ticketPrice * 0.03).toFixed(2))//代理费
+                $("#PayMoney").text("￥" + (data.ticketPrice - (data.ticketPrice * 0.03).toFixed(2)).toFixed(2));//实付金额
+
+
+                $("#dNo").text(data.passengerNo);//客票顺序号=旅客编号
+                $("#dPNo").text(data.passengerNo);//原出票
+
+                $("#dTicketNo").text(data.ticketNo);//票号
+                $("#dS").text(data.orangeName);//始发地
+                $("#dDate").text(data.flightDateStr);//日期
+
+                $("#dTicketStatus").text(data.eTicketStatus + "/" + data.EnglishName);//联票状态
+                $("#dInvoiceStatus").text(data.invoiceStatus);//发票状态   
+
+                //------模态框数据回填
+                //(1) ET航班更改
+                $("#ETPNRNo").attr("value", data.PNRNo);
+                $("#PNRSegmentID").attr("value", data.PNRSegmentID);//隐藏域的值
+                //(2) 电子客票换开
+                $("#CpassengerNo").attr("value", data.passengerNo);//旅客编号
+
+                //(3) 作废
+                $("#IPrice").val(data.ticketPrice);//票价
+                $("#decAgencyFee").val((data.ticketPrice * 0.03).toFixed(2));//代理费
+                $("#IactualRefunfMoney").val((data.ticketPrice - (data.ticketPrice * 0.03).toFixed(2)).toFixed(2));//实付金额
+
+
+                //(4)退票
+                $("#RPrice").val(data.ticketPrice);//票价
+                $("#refundMoney").val((data.ticketPrice*0.97).toFixed(2));
+                $("#refundAgencyFee").val((data.ticketPrice * 0.03).toFixed(2));//代理费
+                $("#actualRefunfMoney").val(data.ticketPrice);
+            }
+
+        })
+        
+        //表格数据加载
+        var layuiTable, layer, laydate;
+        $(function ()
+        {
+            //加载和初始化layui模块
+            layui.use(['layer','table','laydate'],
+                function ()
+                {
+                    layer = layui.layer;
+                    layuiTable = layui.table;
+                    laydate = layui.laydate;
+                    //初始化日期控件
+                    laydate.render({
+                        elem: "#ow-startDate",
+                        type: "date",
+                        btns: ['now', 'confirm'],
+                        trigger: 'click'//解决Laydate一闪而过的问题
+                    })
+                })
+            
+        })
+    </script>
+    //<!--2 模态框跳转及其操作-->
+    <script>
+        var userID=@Session["userID"];
+        @*var ticketPrice = @dbETicket.ticketPrice;*@
+        //2.1 打印换开(注: 1. 票联状态是否为“1”可供使用  2. 发票状态是否为“已开发票”)
+        function printChange()
+        {
+            if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "已开发票") {
+                //重置表单
+                $('#formPrintChange input[type="reset"]').click();
+                //弹出模态框
+                $("#modPrintChange").modal("show");
+            }
+            else
+            {
+                layer.alert("对不起，该票不满足换开条件！", { icon: 0, title: '提交失败', offset: '100px' });
+            }
+        }
+
+        function btnPrintChange()
+        {
+            var newTicketNo = "E781-" + $("#newTicketNo").val().trim();
+            var layerIndex=layer.load();
+            $.post("PrintChange", {
+                intETicketID: ETicketID,
+                strTicketNo: newTicketNo,
+            }, function (jsonData)
+            {
+                layer.close(layerIndex);
+                myAlert(jsonData.Text);
+                if (jsonData.State) {
+                    //页面跳转
+
+                    window.location.replace("OrderInfoShow?ETicketID="+ETicketID);
+                }
+                layer.alert(jsonData.Text);
+            })
+
+        }
+
+        //2.2 ET航班更改(注: 1. 票联状态是否为“1”可供使用  2. 发票状态是否为“未开发票”)
+
+        //function changeFlight()
+        //{
+        //    if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "未开发票") {
+        //        var PNRNo = $("#ETPNRNo").val();
+        //        var PNRSegmentID = $("#PNRSegmentID").val();
+        //        //== 构建需要传递到ET航班更改页面的数据
+        //        var changeData = {
+        //            voluntaryType: 1,          //是否自愿：1-自愿
+        //            PNRNo: PNRNo,              //前票的PNR
+        //            intETicketID: ETicketID,   //电子客票ID
+        //            PNRSegmentID: PNRSegmentID,//航段ID
+        //        }
+        //        //将要传递的数据保存到sessionstorage中
+        //        sessionStorage.setItem("changeData", JSON.stringify(changeData));
+        //        //跳转到 更改航班的选择页面
+        //        window.location.replace("SelectFlightPage");
+        //    }
+        //    else {
+        //        layer.alert("该票不满足航班更改条件！", { icon: 0, title: '提交失败', offset: '100px' });
+        //    }
+        //}
+
+        function changeFlight()
+        {
+            if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "未开发票")
+            {
+                //获取数据
+                var PNRID = $("#ETPNRID").val();
+                var PNRSegmentID = $("#PNRSegmentID").val();
+                var PNRTicketingID = $("#PNRTicketingID").val();
+
+                //构建航班更改的数据
+                var changeData = {
+                    PNRID: PNRID,//PNRID
+                    eTicketID:ETicketID,//电子票号ID
+                    PNRSegmentID: PNRSegmentID,//航段ID
+                    PNRTicketingID: PNRTicketingID,//出票组ID
+                    voluntaryType: 1,//是否自愿更改：1-自愿；2-非自愿
+                }
+                sessionStorage.setItem("changeData", JSON.stringify(changeData));
+                sessionStorage.setItem("ETChangeFlight", "true");
+                //跳转到PNR预定页面
+                window.location.href = "/PNR/PNRAppointment/Index";
+            }else
+            {
+                layer.alert("该票不满足航班更改条件！", { icon: 0, title: '提交失败', offset: '100px' });
+            }
+
+        }
+
+        //2.3 作废
+        function invalid()
+        {
+            if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "未开发票") {
+                //重置表单
+                //$('formInvalid input[type="reset"]').click();
+                //“作废”模态框显示
+                $("#modInvalid").modal("show");
+            } else
+            {
+                layer.alert("对不起，该票票联状态不满足作废条件！", { icon: 0, title: '提交失败', offset: '100px' });
+            }
+        }
+
+        //“作废”按钮绑定点击事件
+        function btnInvalid()
+        {
+            var decAgencyFee = $("#decAgencyFee").val();//代理费
+            var decActualRefunfMoney = $("#IactualRefunfMoney").val();//实退金额
+            var strInvalidCode = $("#InvalidCode").val();//作废单号
+            var Iprice = $("#IPrice").val();//票面金额
+            if (parseInt(decActualRefunfMoney) <= parseInt(Iprice)) {
+                $.post("/ElectronicsTicket/TicketModify/Invalid",
+                    {
+                        intUserID: userID,
+                        intETicketID: ETicketID,
+                        decAgencyFee: decAgencyFee,
+                        decActualRefunfMoney: decActualRefunfMoney,
+                        strInvalidCode: strInvalidCode,
+                    },
+                    function (jsonData) {
+                        if (jsonData.State == true) {
+                            //关闭模态框0.
+                            $("#modInvalid").modal("hide");
+                            //页面跳转
+                            window.location.href = "/ElectronicsTicket/TicketModify/Index";
+                        }
+                        layer.alert(jsonData.Text);
+                    });
+
+            } else
+            {
+                layer.alert("实退金额不能比票面金额大！", { icon: 0, title: '提交失败', offset: '100px' });
+            }
+
+        }
+
+        //2.4 (自愿)退票
+        function refund(){
+            $("#DivInvoluntaryRefund").hide();//隐藏原因
+            if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "未开发票")
+            {
+                //重置表单
+                //$('#formRefund input[type="reset"]').click();
+                
+                ////退款金额
+                //$("#refundMoney").val(ticketPrice.toFixed(2));
+                ////计算代理费
+                //var refundAgencyFee = ticketPrice * 0.03;
+                //$("#refundAgencyFee").val(refundAgencyFee.toFixed(2));
+                ////实退金额
+                //var refunds = ticketPrice - refundAgencyFee;
+                //$("#actualRefunfMoney").val(refunds.toFixed(2));
+                
+                //显示“退票”模态框
+                $("#modRefund").modal("show");
+                //设置为自愿退票
+                $("#isVoluntary").val(1);
+            }
+            else{
+                myAlert("只有可使用&未开发票的票证才可退票，该票不满足退票条件！");
+            }
+        }
+        //2.5(非自愿)退票
+        function involuntaryRefund(){
+            $("#DivInvoluntaryRefund").show();//隐藏原因
+            if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "未开发票")
+            {
+                //重置表单
+                //$('#formRefund input[type="reset"]').click();
+                
+                ////退款金额
+                //$("#refundMoney").val(ticketPrice.toFixed(2));
+                ////计算代理费
+                //var refundAgencyFee = ticketPrice * 0.03;
+                //$("#refundAgencyFee").val(refundAgencyFee.toFixed(2));
+                ////实退金额
+                //var refunds = ticketPrice - refundAgencyFee;
+                //$("#actualRefunfMoney").val(refunds.toFixed(2));
+                
+                //显示“退票”模态框
+                $("#modRefund").modal("show");
+                //设置为非自愿退票
+                $("#isVoluntary").val(2);
+            }else
+            {
+                myAlert("只有可使用&未开发票的票证才可退票，该票不满足退票条件！");
+            }
+        }
+        //退票 / 非自愿退票（模态框）“确定”按钮点击事件
+        function btnRefund(){
+            var decRefundMoney = $("#refundMoney").val();//退款金额(订单支付金额)
+            var decRefundAgencyFee = $("#refundAgencyFee").val();//代理费退回（总费用的3%）
+            var decActualRefunfMoney = $("#actualRefunfMoney").val();//实退金额（总费用）
+            var RPrice = $("#RPrice").val();//票面金额（总费用）
+            var strChangeReason = $("#rChangeReason").val();//退票原因
+            var isVoluntary = $("#isVoluntary").val();//是否自愿退票1-自愿；2-非自愿
+            if(parseInt(decRefundMoney)<=parseInt(decActualRefunfMoney))
+            {
+                var layerIndex=layer.load();
+                $.post("doRefund",{
+                    intUserID:userID,
+                    intETicketID: ETicketID,
+                    decRefundMoney: decRefundMoney,
+                    decRefundAgencyFee: decRefundAgencyFee,
+                    decActualRefunfMoney: decActualRefunfMoney,
+                    isVoluntary:isVoluntary,//是否自愿：1-自愿；2-非自愿
+                    strChangeReason: strChangeReason,
+                },
+                function(jsonData)
+                {
+                    layer.close(layerIndex);
+                    myAlert(jsonData.Text);
+                    if(jsonData.State){
+                        //关闭模态框
+                        $("#modRefund").modal("hide");
+                        //刷新页面
+                        location.reload();
+                    }
+                });
+            }
+        }
+
+        //2.6(非自愿)更改
+        function involuntaryUpdate(){
+            if ($("#dTicketStatus").text().trim() == "可供使用/OPEN FOR USE" && $("#dInvoiceStatus").text().trim() == "未开发票") {
+                //获取数据
+                var PNRID = $("#ETPNRID").val();
+                var PNRSegmentID = $("#PNRSegmentID").val();
+                var PNRTicketingID = $("#PNRTicketingID").val();
+
+                //构建航班更改需要的数据
+                var changeData={
+                    PNRID:PNRID,//PNRID
+                    eTicketID:ETicketID,//电子票号ID
+                    PNRSegmentID:PNRSegmentID,//航段ID
+                    PNRTicketingID:PNRTicketingID,//出票组ID
+                    voluntaryType: 2,//是否自愿更改：1-自愿；2-非自愿
+                }
+                sessionStorage.setItem("changeData",JSON.stringify(changeData));
+                sessionStorage.setItem("INChangeFlight","true");
+                //跳转到PNR预订页面
+                window.location.href="/PNR/PNRAppointment/Index";
+            }else{
+                myAlert("只有可使用并且未开发票的票证才可更改航班，该票不满足更改条件");
+            }
+        }
+
+        //2.7 T4联打印
+        function T4Print()
+        {
+            if ($("#dInvoiceStatus").text().trim()=="未开发票") {
+                var layerIndex = layer.load();
+                $.post("/ElectronicsTicket/TicketModify/T4Print", {
+                    ETicketID:ETicketID,
+                }, function (jsonData)
+                {
+                    layer.close(layerIndex);
+                    if (jsonData.State) {
+                        //隐藏操作按钮
+                        $("#btnS").addClass("no-print");
+                        window.print();//调用浏览器打印方法
+                        location.reload();//刷新页面
+                    } else
+                    {
+                        myAlert(jsonData.Text);
+                    }
+                })
+            } else
+            {
+                myAlert("只有未开发票的票证才可做T4打印的操作");
+            }
+
+        }
+
+
+        //返回上一层页面
+        $("#btnBack").click(function () {
+            window.location.replace("@Url.Content("~/ElectronicsTicket/TicketModify/Index")");
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+﻿@using FJDPXT.Model
+@{
+    Layout = null;
+    List<S_Airport> airports = ViewBag.airports;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>票证历史记录查询</title>
+    <link href="~/Content/images/log.png" type="image/x-icon" rel="shortcut icon" />
+    <!--bootstrap 框架样式表-->
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet import" />
+    <!--系统维护样式表-->
+    <link href="~/Content/css/ElectronicsTicket.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container-fluid pb-5">
+        <h4 class="text-center py-3">旅客电子票证历史记录</h4>
+        <div class="content pt-3">
+            <form action="/" method="post" id="formSlecet" class="form-inline justify-content-between ml-3">
+                <div class="form-group mb-2">
+                    <label class="form-check-label mr-3" for="flightCode">票号 <sup class="text-danger">*</sup>:E781-</label>
+                    <input type="text" class="form-control" id="ticketNo" name="ticketNo" placeholder="票号,如：0000000001">
+                </div>
+                <div class="form-group mb-2">
+                    <label class="form-check-label mr-3" for="passengerName">旅客姓名 <sup class="text-danger">*</sup>:</label>
+                    <input type="text" class="form-control" id="passengerName" placeholder="请输入旅客姓名">
+                </div>
+                <div class="form-group mb-2">
+                    <label class="form-check-label mr-3" for="flightCode">航班号 <sup class="text-danger">*</sup>:</label>
+                    <input type="text" class="form-control" id="flightCode" placeholder="航班号,如：MU1314">
+                </div>
+                <div class="form-group mb-2">
+                    <label class="col-form-label mr-3" for="flightDateStr">航班日期 <sup class="text-danger">*</sup>:</label>
+                    <input type="text" class="form-control mr-2 myLayDate" id="flightDateStr" placeholder="请选择起始日期">
+                </div>
+                <div class="form-group mb-2">
+                    <label class="form-check-label mr-3" for="orange">起飞机场 <sup class="text-danger">*</sup>:</label>
+                    <select id="orange" name="orange" lay-verify="" lay-search class="form-control cf-city">
+                        <option value="0" data-code=""></option>
+                        @foreach (S_Airport airport in airports)
+                        {
+                            <option value="@airport.airportID" data-code="@airport.airportCode">@airport.airportCode [@airport.airportName]</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group mb-2">
+                    <label class="form-check-label mr-3 ml-4" for="destination">到达机场 <sup class="text-danger">*</sup>:</label>
+                    <select id="destination" name="destination" lay-verify="" lay-search class="form-control ow-city">
+                        <option value="0" data-code=""></option>
+                        @foreach (S_Airport airport in airports)
+                        {
+                            <option value="@airport.airportID" data-code="@airport.airportCode">@airport.airportCode [@airport.airportName]</option>
+                        }
+                    </select>
+                </div>
+                <div class="col">
+                    <button type="button" class="btn btn-outline-warning mr-2" onclick="empty()">重置</button>
+                    <button class="btn btn-outline-primary" type="button" onclick="tabTicketHistorySearch()">搜索</button>
+                </div>
+                <div class="col-12">
+                    <table id="tabTicketHistory" class="layui-hide" layui-filter="tabTicketHistory"></table>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="~/Content/Js/jquery-3.2.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script type="text/javascript">
+    var tabTicketHistory;//旅客电子票证历史记录表
+        var layer, layuiTable;//保存layui模块以便全局使用
+
+        $(function () {
+            layui.use(['table', 'laydate', 'layer'],
+               function () {
+                   layuiTable = layui.table;
+                   laydate = layui.laydate;
+                   layer = layui.layer;
+
+                   //初始化日期控件
+                   laydate.render({
+                       elem: "#flightDateStr",
+                       type: "date",
+                       btns: ['now', 'confirm'],
+                       trigger: 'click' //解决Laydate一闪而过的问题
+                   });
+
+                   //初始化表格
+                   tabTicketHistory = layuiTable.render({
+                       elem: "#tabTicketHistory",
+                       url: "/ElectronicsTicket/TicketHistoryQuery/SelectTicketHistoryAll",
+                       cols: [[ //表头
+                        { type: 'numbers', title: '序号' },//序号列，title设定标题名称
+                        { field: 'ticketNo', title: '票号', width: 143 },
+                        { field: 'passengerName', title: '旅客姓名', width: 86 },
+                        { field: 'invoiceStatus', title: '发票状态', width: 147 },
+                        { field: 'eTicketStatus', title: '联票状态', width: 100 },
+                        { field: 'flightCode', title: '航班号', width: 90 },
+                        { field: 'flightDateStr', title: '起飞日期', width: 120 },
+                        { field: 'departureTime', title: '起飞时间', width: 90 },
+                        { field: 'orangeName', title: '出发城市', width: 150 },
+                        { field: 'destinationName', title: '到达城市', width: 150 },
+                        { field: 'certificatesType', title: '证件类型', width: 90 },
+                        { field: 'certificatesCode', title: '证件号码', width: 150 },
+                       ]],
+                       page: true   //开启分页
+                   });
+               }
+           );
+        });
+        //多条件查询table
+        function tabTicketHistorySearch() {
+            //获取input内容并判断
+            var ticketNo = $("#ticketNo").val();
+            var passengerName = $("#passengerName").val();
+            var flightCode = $("#flightCode").val();
+            var flightDateStr = $("#flightDateStr").val();
+            var orangeId = $("#orange").val();
+            if (orangeId==undefined || orangeId==null) {
+                orangeId = 0;
+            }
+            var destinationId = $("#destination").val();
+            if (destinationId == undefined || destinationId == null) {
+                destinationId = 0;
+            }
+            //表格重载
+            tabTicketHistory.reload({
+                where: {
+                    //设定异步数据接口的额外参数
+                    ticketNo: ticketNo,
+                    passengerName: passengerName,
+                    flightCode: flightCode,
+                    flightDateStr: flightDateStr,
+                    orangeId: orangeId,
+                    destinationId: destinationId,
+                },
+                page: {
+                    curr: 1 //重新从第 1 页开始
+                }
+            });
+        }
+        //清空搜索内容--重置按钮
+        function empty() {
+            $("form").each(function ()
+            {
+                this.reset();
+            })
+        }
+
+    </script>
+
+</body>
+
+</html>

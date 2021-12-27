@@ -1,0 +1,325 @@
+﻿ 
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>其他信息修改</title>
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/app-assets/fonts/simple-line-icons/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mb-4">
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <h2>其他信息修改</h2>
+            </div>
+        </div>
+        @*PNR编号 、 PNR状态*@
+        <div class="row">
+            <label class="col-12 col-form-label">
+                <b>PNR:&nbsp;&nbsp;<span id="spanPNRNo"></span>&nbsp;&nbsp;<span id="spanPNRStatus"></span></b>
+            </label>
+        </div>
+        @*PNR旅客信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>旅客</th>
+                    <th>旅客类型</th>
+                    <th>证件类型</th>
+                    <th>证件号码</th>
+                    <th>常旅客号</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPassenger"></tbody>
+        </table>
+        @*PNR航段信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>航段号</th>
+                    <th>航班号</th>
+                    <th>始发地 - 目的地</th>
+                    <th>起飞 - 到达</th>
+                    <th>日期</th>
+                    <th>舱位等级</th>
+                    <th>价格(人民币)</th>
+                    <th>座位数</th>
+                    <th>航段类型</th>
+                </tr>
+            </thead>
+            <tbody id="tbodySegment"></tbody>
+        </table>
+        @*PNR联系组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>联系组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyContact"></tbody>
+        </table>
+        @*PNR其他信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60">删除</th>
+                    <th width="60" class="text-center">序号</th>
+                    <th>其他信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyOtherInfo"></tbody>
+        </table>
+        @*PNR出票组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>出票组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyTicketingInfos"></tbody>
+        </table>
+        @*添加PNR信息*@
+        <div class="card">
+            <div class="card-header text-center">
+                <b>添加 PNR 其他信息</b>
+            </div>
+            <div class="card-body p-2">
+                <form class="row">
+                    <div class="col-12">
+                        <textarea class="form-control" rows="5" name="PNROtherInfo" id="addOtherInfos"></textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @*操作按钮*@
+        <div class="row justify-content-center mt-4 mb-4">
+            <div class="col-4 col-md-3 col-lg-2">
+                <button type="button" class="btn btn-primary btn-block" id="btnEditOtherInfo">确认修改</button>
+            </div>
+            <div class="col-3 col-md-3 col-lg-2">
+                <button type="button" class="btn btn-primary btn-block" id="btnBack">返回</button>
+            </div>
+        </div>
+
+        @*联系人信息 拼接模板*@
+        @* <td> *@
+        @*     <div class="form-row align-items-center"> *@
+        @*         <div class="col-auto"> *@
+        @*             <div class="input-group mb-2"> *@
+        @*                 <div class="input-group-prepend"> *@
+        @*                     <div class="input-group-text">姓名</div> *@
+        @*                 </div> *@
+        @*                 <input type="text" class="form-control" id="contactName" placeholder="联系人姓名" value=""> *@
+        @*             </div> *@
+        @*         </div> *@
+        @*         <div class="col-auto"> *@
+        @*             <div class="input-group mb-2"> *@
+        @*                 <div class="input-group-prepend"> *@
+        @*                     <div class="input-group-text">电话/手机</div> *@
+        @*                 </div> *@
+        @*                 <input type="text" class="form-control" id="contactPhone" placeholder="联系人电话/手机" value=""> *@
+        @*             </div> *@
+        @*         </div> *@
+        @*     </div> *@
+        @* </td> *@
+    </div>
+
+    <script src="~/Content/js/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+    <script>
+
+        var PNRID = @ViewBag.PNRID;
+        var layer;
+
+        $(function(){
+            layui.use(['layer'],function(){
+                layer = layui.layer;
+                //加载数据
+                var layIndex = layer.load();
+                //查询PNR数据，回填到页面
+                $.post("SelectPNRInfo",{ PNRID : PNRID }, function(jsonData){
+                    //关闭加载层
+                    layer.close(layIndex);
+
+                    //获取控制器返回的Json数据
+                    var pnrInfor = jsonData.pnrInfor;
+                    var passengerInfors = jsonData.listPassengerInfor;
+                    var flightCabinInfors = jsonData.listflightCabinInfo;
+                    var otherInfors = jsonData.listPNROtherInfo;
+                    var ticketingInfors = jsonData.listPNRTicketing;
+
+                    //console.log(pnrInfor);
+                    console.log(passengerInfors);
+                    //console.log(flightCabinInfor);
+                    //console.log(otherInfor);
+
+                    //将PNR数据回填到页面
+                    //序号
+                    var totalRowIndex = 1;
+
+                    //1. PNR信息
+                    $("#spanPNRNo").text(pnrInfor.PNRNo.trim());//PNR编号
+                    $("#spanPNRStatus").text("("+pnrInfor.strPNRStatus+")");//PNR状态
+
+                    //2. 旅客组信息
+                    totalPassenger = passengerInfors.length;
+                    $.each(passengerInfors,function(index,passenger){
+                        var pTr=$("<tr></tr>");
+                        pTr.append('<td>'+(totalRowIndex++)+'</td>');//序号
+                        pTr.append('<td>'+passenger.passengerName+'</td>');//旅客姓名
+                        pTr.append('<td>'+passenger.passengerType+'</td>');//旅客类型
+                        pTr.append('<td>'+passenger.certificatesType+'</td>');//证件类型
+                        pTr.append('<td>'+passenger.certificatesCode+'</td>');//证件号
+                        pTr.append('<td>'+passenger.frequentPassengerNo+'</td>');//常旅客号
+
+                        //添加到旅客组表tbody中
+                        $("#tbodyPassenger").append(pTr);
+                    });
+                    
+                    //3. 航段航班信息
+                    $.each(flightCabinInfors,function(index,flightCabin){
+                        var fTr=$("<tr></tr>");
+                        fTr.append('<td>'+(totalRowIndex++)+'</td>');
+                        fTr.append('<td>'+flightCabin.segmentNo+'</td>');
+                        fTr.append('<td>'+flightCabin.flightCode+'</td>');
+                        fTr.append('<td>'+flightCabin.orangeCity+'-'+flightCabin.destinationCity+'</td>');
+                        fTr.append('<td>'+flightTimeToStr(flightCabin.departureTime,flightCabin.arrivalTime)+'</td>');
+                        //航班日期
+                        var strDate = flightCabin.flightDate;// /Date(1576252800000)/
+                        var flightDate = new Date(parseInt(strDate.substr(6,13)));// 1576252800000-->Date
+                        fTr.append('<td>'+flightDate.getFullYear()+'-'+(flightDate.getMonth()+1)+'-'+flightDate.getDate()+'</td>');
+                        fTr.append('<td>'+flightCabin.cabinTypeName+'</td>');
+                        fTr.append('<td>'+flightCabin.cabinPrice+'</td>');
+                        fTr.append('<td>'+flightCabin.seatNum+'</td>');
+                        fTr.append('<td>'+flightCabin.segmentTypeStr+'</td>');
+
+                        //添加到航段航班信息表tbody中
+                        $("#tbodySegment").append(fTr);
+                    });
+
+                    //4. 联系组
+                    var cTr = $("<tr></tr>");
+                    cTr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');
+                    cTr.append('<td>' +
+                           '<div class="form-row align-items-center">' +
+                               '<div class="col-auto">' +
+                                   '<div class="input-group mb-2">' +
+                                       '<div class="input-group-prepend">' +
+                                           '<div class="input-group-text">姓名</div>' +
+                                       '</div>' +
+                                       '<input type="text" class="form-control" id="contactName" placeholder="联系人姓名" value="'+ pnrInfor.contactName+'">' +
+                                   '</div>' +
+                               '</div>' +
+                               '<div class="col-auto">' +
+                                   '<div class="input-group mb-2">' +
+                                       '<div class="input-group-prepend">' +
+                                           '<div class="input-group-text">电话/手机</div>' +
+                                       '</div>'+
+                                       '<input type="text" class="form-control" id="contactPhone" placeholder="联系人电话/手机" value="'+pnrInfor.contactPhone+'">' +
+                                   '</div>' +
+                               '</div>' +
+                           '</div></td>');
+                    //添加到联系人组tbody中
+                    $("#tbodyContact").append(cTr);
+
+                    //5. 其他信息tbodyOtherInfo
+                    $.each(otherInfors,function(index,otherInfo){
+                        var oTr = $("<tr></tr>");
+                        oTr.append('<td  class="text-center"><input type="checkbox" name="otherInfo" data-other-info-id="'+otherInfo.PNROtherInfoID+'" ></td>')
+                        oTr.append('<td>'+(totalRowIndex++)+'</td>');
+                        oTr.append('<td>'+otherInfo.otherInfo+'</td>');
+
+                        //添加到其他组tbody中
+                        $("#tbodyOtherInfo").append(oTr);
+                    });
+
+                    //6. 出票组tbodyTicketingInfos
+                    var ticketingTr = $("<tr></tr>");
+                    ticketingTr.append('<td>'+(totalRowIndex++)+'</td>');
+                    ticketingTr.append('<td><input type="text" class="form-control" id="ticketingInfo" placeholder="出票组信息  " value="'+pnrInfor.TicketingInfo+'"></td>');
+                    //添加到出票组tbody中
+                    $("#tbodyTicketingInfos").append(ticketingTr);
+
+                    //遍历出票组信息
+                    $.each(ticketingInfors,function(index,ticketingInfor){
+                        var tr=$("<tr></tr>");
+                        tr.append('<td>'+(totalRowIndex++)+'</td>');
+                        //电子客票编号+航段编号+旅客编号
+                        tr.append('<td> OSI MU TKNO '+ticketingInfor.ticketNo.replace("-","")+
+                                  '/S'+ticketingInfor.segmentNo+'/P'+ticketingInfor.passengerNo+'</td>');
+
+                        $("#tbodyTicketingInfos").append(tr);
+                    });
+                });
+            });
+            //确认按钮点击事件
+            $("#btnEditOtherInfo").click(function()
+            {
+                //获取信息
+                var contactName =$("#contactName").val();//联系人
+                var contactPhone=$("#contactPhone").val();//联系电话
+                var ticketingInfo=$("#ticketingInfo").val();//出票组信息
+                var addOtherInfo=$("#addOtherInfos").val();//其他信息
+            
+                //数据验证
+                if(contactName==null || contactName==undefined || contactName=="")
+                {
+                    myAlert("请输入联系人姓名","提示",0);
+                }
+                if(contactPhone==null || contactPhone==undefined || contactPhone=="")
+                {
+                    myAlert("请输入联系人电话","提示",0);
+                }
+                if(ticketingInfo==null || ticketingInfo==undefined || ticketingInfo=="")
+                {
+                    myAlert("请填写出票组信息","提示",0);
+                }
+
+                //选择需要删除的PNR信息
+                var delOtherInforIDs=[];
+                $('input[name="otherInfo"]:checked').each(function()
+                {
+                    delOtherInforIDs.push($(this).data("other-info-id"));
+                })
+
+                //提交请求
+                var layerIndex=layer.load();
+                $.post("updateOtherInfor",
+                    {
+                        PNRID:PNRID,
+                        contactName:contactName,
+                        contactPhone:contactPhone,
+                        delOtherInforIDs:delOtherInforIDs,
+                        addOtherInfo:addOtherInfo,
+                        ticketingInfo:ticketingInfo
+                    },function(jsonData){
+                        layer.close(layerIndex);
+                        myAlert(jsonData.Text);
+                        if(jsonData)
+                        {
+                            window.location.replace("PnrInfoShow?PNRID="+PNRID);
+                        }
+                    })
+            });
+        });
+            
+        //返回按钮
+        $("#btnBack").click(function(){
+            window.location.href="PnrInfoShow?PNRID="+PNRID;
+        });
+    </script>
+</body>
+</html>

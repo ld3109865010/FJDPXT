@@ -1,0 +1,195 @@
+﻿@using FJDPXT.EntityClass
+@using FJDPXT.Model
+@{
+    Layout = null;
+
+    //接收viewBag的数据
+    PNRVo pnrInfor = ViewBag.PNRInfor;
+    List<PassengerVo> passengerInfors = ViewBag.passengerInfor;
+    List<FlightCabinInfo> flightCabinInfors = ViewBag.flightCabinInfor;
+    List<B_PNROtherInfo> otherInfors = ViewBag.otherInfor;
+    List<PNRTicketingVo> pnrTicketings = ViewBag.listPNRTicketing;
+
+    //序号
+    int totalNum = 1;
+    string isNextDay = "";
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>PNR显示</title>
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/app-assets/fonts/simple-line-icons/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mb-4">
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <h2>PNR显示</h2>
+            </div>
+        </div>
+
+        @*PNR编号 、 PNR状态*@
+        <div class="row justify-content-between">
+            <label class="col-8 col-form-label">
+                <b>PNR:&nbsp;&nbsp;<span id="spanPNRNo">@pnrInfor.PNRNo</span>&nbsp;&nbsp;<span id="spanPNRStatus">@pnrInfor.PNRStatus</span></b>
+            </label>
+            <button type="button" class="btn btn-sm btn-primary mb-1" id="btnBack">返回</button>
+        </div>
+
+        @*PNR旅客信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>旅客</th>
+                    <th>旅客类型</th>
+                    <th>证件类型</th>
+                    <th>证件号码</th>
+                    <th>常旅客号</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPassenger">
+                @* 旅客信息 *@
+                @foreach (PassengerVo passengerInfor in passengerInfors)
+                {
+                    <tr>
+                        <td>@(totalNum++)</td>@*序号*@
+                        <td>@passengerInfor.passengerName</td>@*旅客姓名*@
+                        <td>@passengerInfor.passengerType</td>@*旅客类型*@
+                        <td>@passengerInfor.certificatesType</td>@*证件类型*@
+                        <td>@passengerInfor.certificatesCode</td>@*证件号码*@
+                        <td>@passengerInfor.frequentPassengerNo</td>@*常旅客号*@
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @*PNR航段信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>航段号</th>
+                    <th>航班号</th>
+                    <th>始发地 - 目的地</th>
+                    <th>起飞 - 到达</th>
+                    <th>日期</th>
+                    <th>舱位等级</th>
+                    <th>价格(人民币)</th>
+                    <th>座位数</th>
+                    <th>航段类型</th>
+                </tr>
+            </thead>
+            <tbody id="tbodySegment">
+                @* PNR航段航班信息 *@
+                @foreach (FlightCabinInfo flightCabinInfor in flightCabinInfors)
+                {
+                    <tr>
+                        <td>@(totalNum++)</td>@*序号*@
+                        <td>@flightCabinInfor.segmentNo</td>@*航段号*@
+                        <td>@flightCabinInfor.flightCode</td>@*航班号*@
+                        <td>@flightCabinInfor.orangeCity - @flightCabinInfor.destinationCity</td>@*始发地-目的地*@
+                        @* 起飞时间 - 到达时间 *@
+                        @if (flightCabinInfor.arrivalTime.Value.TotalMinutes < flightCabinInfor.departureTime.Value.TotalMinutes)
+                        {
+                            isNextDay = "+1";
+                        }
+                        <td>
+                            @flightCabinInfor.departureTime.Value.ToString(@"hh\:mm")- @flightCabinInfor.arrivalTime.Value.ToString(@"hh\:mm")
+                            <sup class="text-danger">@isNextDay</sup>
+                        </td>
+                        <td>@flightCabinInfor.flightDate.Value.ToString("yyyy-MM-dd")</td>@*日期*@
+                        <td>@flightCabinInfor.cabinTypeName</td>@*舱位等级*@
+                        <td>@flightCabinInfor.cabinPrice</td>@*价格*@
+                        <td>@flightCabinInfor.seatNum</td>@*座位数*@
+                        <td>@flightCabinInfor.segmentType</td>@*航段类型*@
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @*PNR联系组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>联系组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyContact">
+                @* 联系组信息 *@
+                <tr>
+                    <td>@(totalNum++)</td>
+                    <td>@pnrInfor.contactName &nbsp; @pnrInfor.contactPhone</td>@*姓名&联系方式*@
+                </tr>
+            </tbody>
+        </table>
+
+        @*PNR其他信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>其他信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyOtherInfo">
+                @* 其他信息 *@
+                @foreach (B_PNROtherInfo pnrOtherInfor in otherInfors)
+                {
+                    <tr>
+                        <td>@(totalNum++)</td>
+                        <td>@pnrOtherInfor.otherInfo</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @*PNR出票组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>出票组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyTicketingInfos">
+                @* 出票组信息 电子客票编号+航段编号+旅客编号*@
+                @foreach (PNRTicketingVo pnrTicketing in pnrTicketings)
+                {
+                    <tr>
+                        <td>@(totalNum++)</td>
+                        <td>
+                            @("OSI MU TKNO " + pnrTicketing.ticketNo.Replace("-", "") +
+                              "/S" + pnrTicketing.segmentNo +
+                              "/P" + pnrTicketing.passengerNo)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+
+    <script src="~/Content/js/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+    <script>
+        $(function ()
+        {
+            //返回订单查询页面
+            $("#btnBack").click(function ()
+            {
+                window.location.replace("@Url.Content("~/ElectronicsTicket/TicketModify/Index")");
+            })
+        })
+        
+    </script>    
+</body>
+</html>

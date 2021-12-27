@@ -1,0 +1,662 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>SelectFlightPage</title>
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <!--bootstrap 框架样式表-->
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!--后台模板中的字体图标css样式-->
+    <link href="~/Content/app-assets/fonts/simple-line-icons/style.css" rel="stylesheet" />
+    <style>
+        /* 各个航段 标题部分上线边框 */
+        .segmentTitle {
+            padding: 5px 0;
+            border-top: 2px solid black;
+            border-bottom: 2px solid black;
+            font-size: 22px;
+        }
+
+        /* 各个航段 标题部分 按钮样式 */
+        .btn-collapse-t {
+            padding: 2px 10px;
+            background: transparent;
+            font-size: 20px;
+            border: 0;
+        }
+
+            /* 各个航段 标题部分 按钮去除获得焦点时的蓝色边框 */
+            .btn-collapse-t.focus,
+            .btn-collapse-t:focus {
+                outline: 0;
+                box-shadow: none;
+            }
+
+        /* 航班舱位 等级 座位 价格显示 */
+        .flightCabinItem {
+            display: inline-block;
+            width: 120px;
+        }
+
+        /* 让layui单元格多出的部分自动换行 */
+        .layui-table-cell {
+            font-size: 14px;
+            padding: 0 5px;
+            height: auto;
+            overflow: visible;
+            text-overflow: inherit;
+            white-space: normal;
+            word-break: break-all;
+        }
+
+        .layui-table-view {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <h2 id="h2Title">选择航班</h2>
+            </div>
+        </div>
+        @*存放各个航段数据的容器*@
+        <div class="accordion border-bottom" id="accordionSegment">
+
+        </div>
+        @*变更信息回填*@
+        <div class="row mt-4 justify-content-center d-none" id="DivInvoluntaryUpdate">
+            <label class="col-2 col-form-label text-right">变更原因 ：</label>
+            <input type="text" class="form-control col-4" id="changeReason" />
+        </div>
+        @*人数信息*@
+        <div class="row mt-4 justify-content-center d-none" id="divPassengerNum">
+            <label class="col-2 col-lg-1 col-form-label">人数：</label>
+            <div class="col-3 col-lg-2">
+                <input type="number" class="form-control" max="9" min="1" step="1" value="1" id="passengerNum" />
+            </div>
+            <div class="col-2 col-lg-1 d-none" id="divAppointment">
+                <button type="button" class="btn btn-block btn-primary" id="btnAppointment">预订</button>
+            </div>
+            @* 为PNR添加航段准备的按钮 *@
+            <div class="col-2 col-lg-1 d-none" id="divAddSegment">
+                <button type="button" class="btn btn-block btn-primary" id="btnAddSegment">添加</button>
+            </div>
+            <div class="col-2 col-lg-1 d-none" id="divChangeFlight">
+                <button type="button" class="btn btn-block btn-primary" id="btnChangeFlight">更改</button>
+            </div>
+            <div class="col-2 col-lg-1 d-none" id="ow-btnSearch">
+                <button type="button" class="btn btn-block btn-primary btnCancel">返回</button>
+            </div>
+            @* 为PNR添加航段准备的按钮 *@
+        </div>
+    </div>
+
+    @* 航段选择模板 *@
+    <div class="card d-none" id="segmentCardT">
+        <div class="card-header pt-0 pb-0">
+            <div class="row">
+                <div class="col-12 p-0">
+                    <button id="btnCollapseT" class="btn btn-block btn-collapse-t" type="button" data-toggle="collapse" data-target="#segmentCollapseT">
+                        <div class="row segmentTitle justify-content-between">
+                            <div class="col-1 text-left">
+                                <p><i class="icon-plane">&nbsp;</i><b data-id="title">单程</b></p>
+                            </div>
+                            <div class="col-1"></div>
+                            <div class="col-10 col-md-4 col-lg-4">
+                                <b>航线：</b><span id="line-ow" data-id="site">广州——北京</span>
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-4 text-right">
+                                @* <i class="icon-list"></i> *@
+                                <b>日期：</b> <span id="date-ow" data-id="date">2019-12-10</span>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="segmentCollapseT" class="collapse" data-parent="#accordionSegment">
+            <div class="card-body p-0">
+                <table lay-filter="tableFlightT" id="tableFlightT">
+                    <thead>
+                        <tr>
+                            <th lay-data="{field:'index',align:'center', width:40}">序号</th>
+                            <th lay-data="{field:'flightCode',align:'center', width:80}">航班号</th>
+                            <th lay-data="{field:'flighrSite',align:'center', width:160}">始发地 - 目的地</th>
+                            <th lay-data="{field:'flightTime',align:'center', width:120}">起飞 - 到达</th>
+                            <th lay-data="{field:'planType',align:'center', width:80}">机型</th>
+                            <th lay-data="{field:'seatInfo'}">座位/座位数/价格(人民币)</th>
+                        </tr>
+                    </thead>
+                    <tbody data-id="tbodyFlight">
+                        @* 行数据模板 *@
+                        @* <tr> *@
+                        @*     <td>1</td> *@
+                        @*     <td>MU5317</td> *@
+                        @*     <td>乌鲁木齐 到 齐齐哈尔</td> *@
+                        @*     <td>10:00 - 12:20</td> *@
+                        @*     <td>A380</td> *@
+                        @*     <td> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F>9 ￥1790"></div> *@
+                        @*         <div class="flightCabinItem"><input type="radio" name="cabin" value="1" title="F=7 ￥1790"></div> *@
+                        @*     </td> *@
+                        @* </tr> *@
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="~/Content/app-assets/vendors/js/core/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+    <script>
+        var layer, layuiTable;
+        var PNRID;
+        var airportAndDate;
+        var totalPassengerNo;
+        var isCopy = false;
+        var passengerInfors;
+        $(function () {
+            $("#divAppointment").removeClass("d-none");
+            //===============PNR复制================
+            //获取PNR复制标志
+            var copyPNR = sessionStorage.getItem("copyPNR");
+            //获取旅客信息
+            passengerInfors = JSON.parse(sessionStorage.getItem("passengerInfors"));
+
+            if (copyPNR != null && copyPNR == "true") {
+                //isCopy=true;
+                $("#passengerNum").val(passengerInfors.length);
+                $("#passengerNum").prop("min", passengerInfors.length);
+            }
+            //===============PNR复制================
+
+
+            //===============PNR添加航段======================btnAppointment
+            //获取添加航段的标志
+            var addSegment = sessionStorage.getItem("addSegment")
+            //获取旅客人数
+            var totalPassengerNo = sessionStorage.getItem("addSegment_pnrPassengerNum");
+            //获取PNRID
+            PNRID = sessionStorage.getItem("addSegment_PNRID");
+
+            if (addSegment != null && addSegment == "true") {
+                //修改标题
+                $("#h2Title").text("添加航段-选择航班")
+
+                //隐藏“预定按钮”
+                $("#divAppointment").addClass("d-none");
+
+                //显示“添加”按钮
+                $("#divAddSegment").removeClass("d-none");
+
+                //显示“返回”按钮
+                $("#ow-btnSearch").removeClass("d-none");
+
+                //设置人数
+                $("#passengerNum").val(totalPassengerNo).prop("readonly", "readonly")
+            }
+            //===============PNR添加航段======================
+            //===============ET航班更改======================
+            //获取航班更改的标志
+            var flightChange = sessionStorage.getItem("ETChangeFlight");
+            var changeData = JSON.parse(sessionStorage.getItem("changeData"));
+            var INChangeFlight = sessionStorage.getItem("INChangeFlight");
+
+            if (flightChange != null && flightChange == "true"){
+                //修改标题
+                $("#h2Title").text("ET航班更改-选择航班");
+                //显示"更改"按钮
+                $("#divChangeFlight").removeClass("d-none");
+                //隐藏"预定"按钮
+                $("#divAppointment").addClass("d-none");
+                //设置人数为"只读"状态
+                $("#passengerNum").val(1).prop("readonly", "readonly");
+            }
+            if (INChangeFlight != null && INChangeFlight == "true") {
+                //修改标题
+                $("#h2Title").text("ET航班更改-选择航班");
+                //显示"更改"按钮
+                $("#divChangeFlight").removeClass("d-none");
+                //隐藏"预定"按钮
+                $("#divAppointment").addClass("d-none");
+                //设置人数为"只读"状态
+                $("#passengerNum").val(1).prop("readonly", "readonly");
+                //显示更改原因
+                $("#DivInvoluntaryUpdate").removeClass("d-none");
+            }
+
+            //===============ET航班更改======================
+            //加载layui模块
+            layui.use(['layer', 'table'], function () {
+                layer = layui.layer;
+                layuiTable = layui.table;
+
+                //取出上一页通过sessionStorage传递的数据
+                var strAirportAndDate = sessionStorage.getItem("airportAndDate");
+                //将字符串转成JSON对象
+                airportAndDate = JSON.parse(strAirportAndDate);//parse反序列化
+                //打开加载层
+                var layerIndex = layer.load();
+
+                //==请求控制器查询航段 - 航班- 航班舱位价格信息
+                $.post("@Url.Content("~/PNR/PNRAppointment/SelectFlight")",
+                    airportAndDate,
+                    function (jsonData) {
+                        // console.log(jsonData);
+                        //获取出页面用于显示的容器元素
+                        var accordionSegment = $("#accordionSegment");
+                        //获取出航段信息的显示模板
+                        var segmentCardT = $("#segmentCardT");
+
+                        //判断jsonData不能为null,且数据个数不能为0
+                        if (jsonData != null && jsonData.length > 0) {
+                            for (var i = 0; i < jsonData.length; i++) {
+                                //获取出当前航段数据
+                                var segmentData = jsonData[i];
+
+                                //1-复制/克隆一份模板
+                                var segmentCard = segmentCardT.clone();
+
+                                //2-去除模板上的d-none类
+                                segmentCard.removeClass("d-none");
+
+                                //3-修改模板上的各种ID
+                                segmentCard.prop("id", "segmentCard" + i);//模板ID
+                                segmentCard.find("#segmentCollapseT").prop("id", "segmentCollapse" + i);//Collapse的ID
+                                //Collapse1切换按钮 iD和目标Collapse的ID
+                                var btnCollapse = segmentCard.find("#btnCollapseT");
+                                btnCollapse.prop("id", "btnCollapse" + i);
+                                btnCollapse.attr("data-target", "#segmentCollapse" + i);
+                                segmentCard.find("#tableFlightT").prop("id", "tableFlight" + i);//各个航段候选航班表格id
+                                segmentCard.find("#tableFlight" + i).attr("lay-filter", "tableFlight" + i);//各个航段候选航班表格 的 lay-filter属性
+
+                                //4-设置第一个航段默认状态
+                                if (i === 0) {
+                                    segmentCard.find("#segmentCollapse" + i).addClass("show");
+                                }
+
+                                //5航段号的显示
+                                var segmentTitle = segmentCard.find('b[data-id="title"]');
+                                //往返程
+                                if (airportAndDate.flightType == 2) {
+                                    if (i === 0) {
+                                        segmentTitle.text("航段:往")
+                                    } if (i === 1) {
+                                        segmentTitle.text("航段:返")
+                                    }
+                                } else if (airportAndDate.flightType == 3) {
+                                    segmentTitle.text("航段:" + (i + 1));
+                                } else {
+                                    //默认单程的情况 不操作
+                                }
+                                //else {
+                                //    segmentTitle.text("航段:返")
+                                //}
+                                //}
+                                ////联程
+                                //if (airportAndDate.flightType == 3) {
+                                //    segmentTitle.text("航段:" + (i + 1));
+                                //} else {
+                                //    segmentTitle.text("航段");
+                                //}
+
+                                //6航线和日期
+                                var strSite = segmentData.orangeCityName + "——" + segmentData.destinationCityName;
+                                segmentCard.find('span[data-id="site"]').text(strSite);//航线
+                                //日期
+                                segmentCard.find('span[data-id="date"]').text(segmentData.strDate);//日期
+
+                                //7绑定航段table
+                                //表格行数据的容器
+                                var tbody = segmentCard.find('[data-id="tbodyFlight"]');
+                                //表格的数据
+                                var flightList = segmentData.flightList;
+                                for (var j = 0; j < flightList.length; j++) {
+                                    var tr = $(document.createElement("tr"));
+                                    //7.1-序号列]
+                                    tr.append('<td>' + (j + 1) + '</td>');
+                                    //7.2 - 航班号
+                                    tr.append('<td>' + flightList[j].flightCode + '</td>')
+                                    //7.3-始发地 - 目的地
+                                    tr.append('<td>' + flightList[j].orangeCityName + "到" +
+                                        flightList[j].destinationCityName + '</td>')
+                                    //7.4-时间 起飞 - 到达
+                                    tr.append('<td>' + flightTimeToStr(flightList[j].departureTime,
+                                        flightList[j].arrivalTime) + '</td>')
+                                    //7.5-机型
+                                    tr.append('<td>' + flightList[j].planTypeName + '</td>')
+                                    //7.6-座位/座位数/价格(人民币)
+                                    var td6 = $(document.createElement("td"));//创建td
+                                    var flightCabins = flightList[j].flightCabins;//获取出航班信息中的舱位信息list
+                                    //将航班时间和日期拼接,用于后续多段时间判断
+                                    var startEndDate = timeObjToDateTimeStr(jsonData[i].strDate, flightList[j].departureTime, flightList[j].arrivalTime);
+                                    //遍历舱位信息list 生成舱位信息
+                                    for (var k = 0; k < flightCabins.length; k++) {
+                                        var cabinName = "cabin" + i;//同一航段的使用同一name，保证同一个航段只能选择一个
+                                        var cabinTitle = flightCabins[k].cabinTypeCode;//舱位等级编号
+                                        //舱位剩余座位数 大于9显示 >9;否则显示具体的剩余座位数
+                                        //剩余座位数 = 舱位座位数-售出座位数
+                                        if ((flightCabins[k].seatNum - flightCabins[k].sellSeatNum) > 9) {
+                                            cabinTitle += ">9";
+                                        } else {
+                                            cabinTitle += "=" + (flightCabins[k].seatNum - flightCabins[k].sellSeatNum);
+                                        }
+                                        //价格
+                                        cabinTitle += " ￥" + flightCabins[k].cabinPrice;
+                                        //拼接舱位价格信息
+                                        td6.append('<div class="flightCabinItem"><input type="radio" name="' + cabinName +
+                                            '" value="1" data-flight-id="' + flightCabins[k].flightID +
+                                            '" data-flight-cabin-id="' + flightCabins[k].flightCabinID +
+                                            '" data-start-end-date="' + startEndDate +
+                                            '" data-seat-num="' + (flightCabins[k].seatNum - flightCabins[k].sellSeatNum) +
+                                            '" title="' + cabinTitle +
+                                            '"></div>');
+                                    }
+                                    //把td添加到tr
+                                    tr.append(td6);
+                                    //把tr添加到tbody
+                                    tbody.append(tr);
+                                }
+                                //=把segmentCard添加到外部的容器元素
+                                accordionSegment.append(segmentCard);
+                                //转换静态表格
+                                var tableFlightId = "tableFlight" + i;
+                                layuiTable.init(tableFlightId);
+                            }
+                            //显示出人数信息
+                            $("#divPassengerNum").removeClass("d-none");
+
+                        } else {
+                            accordionSegment.append('<p>没有查询到数据</p>')
+                        }
+                        //关闭加载层
+                        layer.close(layerIndex);
+
+                    })
+            })
+        });
+        //预定按钮点击事件
+        $("#btnAppointment").click(function () {
+            //变量 存放数据
+            var flightCabinIDs = [];//存放用户选择的航班舱位ID (后续可以根据航班舱位ID查询出用户选择的航班 舱位等信息)
+            var startEndDates = [];//存放用户选择的航班起飞降落时间 (为了数据验证)
+            var seatNums = [];//存放用户选择的航班舱位的剩余座位数(为了数据验证)
+
+            //遍历各个航段,获取用户选择的数据
+            for (var i = 0; i < airportAndDate.segmentNum; i++) {
+                //获取用户选择的航班舱位
+                var checkedCabins = $('[name="cabin' + i + '"]:checked');
+
+                //判断用户是否选择航班舱位
+                if (checkedCabins.length == 0) {
+                    //获取航段标题
+                    var title = $('#segmentCard' + i + ' b[data-id="title"]').text();
+                    myAlert("请选择[" + title + "]的航班舱位", "提示", 0);
+                    return;
+                }
+                //获取用户选择的航班舱位ID
+                flightCabinIDs.push(checkedCabins.eq(0).data("flight-cabin-id"));
+                //获取用户选择航班的起飞降落时间(用于数据验证)
+                startEndDates.push(checkedCabins.eq(0).data("start-end-date"));
+                //获取用户选择航班舱位的剩余座位数(用于数据验证)
+                seatNums.push(checkedCabins.eq(0).data("seat-num"));
+
+            }
+            console.log(flightCabinIDs);
+            console.log(startEndDates);
+            console.log(seatNums);
+            //数据验证 航班的起飞时间是否合适
+            //下一航班的起飞时间要 大于 上一航班降落时间60分钟
+            if (airportAndDate.segmentNum > 1) {//排除掉单程的情况
+                for (var i = 1; i < airportAndDate.segmentNum; i++) {
+                    //分割上一个航段的起飞降落时间
+                    var strStartEndDatesOld = startEndDates[i - 1].split(";");////分割startEndDates获取到起飞时间和降落时间的字符串
+                    var dtStartOld = new Date(strStartEndDatesOld[0]);//上一航段 起飞时间
+                    var dtEndOld = new Date(strStartEndDatesOld[1]);//上一航段 降落时间
+                    //分割当前航段的起飞降落时间
+                    var strStartEndDatesNew = startEndDates[i].split(";");
+                    var dtStartNow = new Date(strStartEndDatesNew[0]);//当前航段 起飞时间
+                    var dtEndtNow = new Date(strStartEndDatesNew[1]);//当前航段 降落时间
+
+                    //当前航段的起飞时间 晚于 上一航段降落时间至少60分钟
+                    dtStartOld.setMinutes(dtEndOld.getMinutes() + 60);
+                    if (dtStartNow.getTime() <= dtEndOld.getTime()) {
+                        var titleOld = $('#segmentCard' + (i - 1) + ' b[data-id="title"]').text();
+                        var titleNow = $('#segmentCard' + i + ' b[data-id="title"]').text();
+
+                        myAlert("【" + titleNow + "】的起飞时间需要大于【" + titleOld + "】降落时间60分钟,请重新选择", "提示", 0);
+                        return;
+                    }
+                }
+            }
+            //数据验证 用户输入人数[1-9]
+            var passengerNum = $('#passengerNum').val();
+            if (!(/^[1-9]{1}$/.test(passengerNum))) {
+                myAlert("人数只能为1-9的整数", "提示", 0);
+                return;
+            }
+            //=================PNR复制===============
+
+            //验证旅客数要小于等于各个航段最小可用座位数
+            if (isCopy) {
+                if (passengerNum < passengerInfors.length) {
+                    myAlert("订票人数不能小于复制旅客人数!", "提示", 0)
+                    return;
+                }
+
+            }
+
+            //=================PNR复制===============
+
+            //==验证旅客数要小于等于各个航段最小可用座位数
+            for (var i = 0; i < seatNums.length; i++) {
+                if (parseInt(passengerNum) > parseInt(seatNums[i])) {//旅客人数大于剩余座位数
+                    myAlert("第" + (i + 1) + "个航段的所选航班\舱位的剩余座位数不足,请重新选择");
+                    return;
+                }
+            }
+
+            //保存数据到sessionStorage
+            var flightCabinAndPassengerNum = {
+                flightCabinIDs: flightCabinIDs,
+                passengerNum: parseInt(passengerNum)
+            }
+            sessionStorage.setItem("flightCabinAndPassengerNum", JSON.stringify(flightCabinAndPassengerNum));
+
+            //传递数据到下一页面(get请求传数据组)
+            var strUrl = "@Url.Content("~/PNR/PNRAppointment/EnterInfoPage?")";
+            //把航班舱位ID数组拼接到url上
+            for (var i = 0; i < flightCabinIDs.length; i++) {
+                strUrl += "flightCabinIDs=" + flightCabinIDs[i] + "&";
+                //strUrl = strUrl + "flightCabinIDs=" + flightCabinIDs[i] + "&";
+            }
+            //拼接旅客人数
+            strUrl += "passengerNum=" + passengerNum;
+
+            window.location.href = strUrl;
+
+            //window.location.href("@*@Url.Content("~/PNR/PNRAppointment/EnterInfoPage?"),*@strUrl")
+
+
+
+        });
+
+
+        //===============PNR添加航段======================
+        //“添加”按钮点击事件
+        $("#divAddSegment").click(function () {
+            var flightCabinIDs = [];//存放用户选择的航班舱位ID (后续可以根据航班舱位ID查询出用户选择的航班 舱位等信息)
+            var startEndDates = [];//存放用户选择的航班起飞降落时间 (为了数据验证)
+            var seatNums = [];//存放用户选择的航班舱位的剩余座位数(为了数据验证)
+
+            //遍历航段,获取用户选中的航班舱位信息
+            for (var i = 0; i < airportAndDate.segmentNum; i++) {
+                //获取航段信息
+                var segmentTitle = $("#segmentCard" + i).find('b[data-id="title"]').text();
+                //获取选中的航班
+                var checkSegmentCabin = $('[name="cabin' + i + '"]:checked');
+                //判断是否选择了舱位
+                if (checkSegmentCabin.length == 0) {
+                    myAlert("请选择【 " + segmentTitle + " 】的航班和舱位");
+                    return;
+                }
+                //获取选中的航班舱位ID
+                flightCabinIDs.push(checkSegmentCabin.eq(0).data("flight-cabin-id"));
+                //获取 起飞时间和降落时间，用于后续判断行程时间是否冲突
+                startEndDates.push(checkSegmentCabin.eq(0).data("start-end-date"));
+                //获取当前航班舱位剩余座位数
+                seatNums.push(checkSegmentCabin.eq(0).data("seat-num"));
+            }
+
+            //验证航班数据是否正确
+            if (airportAndDate.segmentNum > 1)//判断是否存在两个航段及其以上
+            {
+                //从第二个航段开始遍历
+                for (var i = 1; i < airportAndDate.segmentNum; i++) {
+                    //获取上一个航段的起飞和降落时间 
+                    var strStartEndDateOld = startEndDates[i - 1].split(";");//分割字符串获得起飞和降落时间
+                    var dtStartOld = new Date(strStartEndDateOld[0]);
+                    var dtEndOld = new Date(strStartEndDateOld[1]);
+
+                    //获取当前航段的起飞和降落时间 
+                    var strStartEndDateNew = startEndDates[i].split(";");
+                    var dtStartNew = new Date(strStartEndDateNew[0]);
+                    var dtEndNew = new Date(strStartEndDateNew[1]);
+
+                    //判断当前的起飞日期是否晚于上一航段降落时间60分钟
+                    dtEndOld.setMinutes(dtEndOld.getMinutes() + 60);
+                    if (dtEndOld.getTime > dtStartNew.getTime) {
+                        //获取上一航段的的信息(非保存数据，用于提示用户)
+                        var segmentTitleOld = $("#segmentCard" + (i - 1)).find('b[data-id="title"]').text();
+                        //获取当前航段的信息(非保存数据，用于提示用户)
+                        var segmentTitleNew = $("#segmentCard" + i).find('b[data-id="title"]').text();
+                        //提示用户
+                        myAlert("[" + segmentTitleOld + "]的降落时间与[" + segmentTitleNew + "]的起飞时间相隔少于60分钟");
+                        return;
+                    }
+                }
+            }
+            //判断剩余座位是否大于订座人数
+            for (var i = 0; i < seatNums.length; i++) {
+                var seatNum = parseInt(seatNums[i]);
+                if (totalPassengerNo > seatNum)
+                {
+                    myAlert("第【" + (i + 1) + "】航段所选舱位座位数不足，请重新选择");
+                    return;
+                }
+            }
+            console.log(flightCabinIDs);
+            //发送请求
+            var layerIndex = layer.load();
+            $.post("/PNR/PNRQuery/AddSegment",
+                {
+                    flightCabinIDs: flightCabinIDs,
+                    PNRID: PNRID,
+                }, function (jsonData) {
+                    myAlert(jsonData.Text);
+                    if (jsonData.State) {
+                        //清楚添加航段相关数据
+                        sessionStorage.removeItem("addSegment");
+
+                        window.location.replace("/PNR/PNRQuery/PnrInfoShow?PNRID=" + PNRID);
+                    }
+                })
+        })
+
+        $(".btnCancel").click(function () {
+            window.location.replace("/PNR/PNRAppointment/Index")
+
+        })
+
+        //===============PNR添加航段======================
+        //===============ET航段更改======================
+        $("#divChangeFlight").click(function () {
+            var flightCabinID = 0;//存放用户选择的航班舱位ID (后续可以根据航班舱位ID查询出用户选择的航班 舱位等信息)
+            var seatNums = 0;//存放用户选择的航班舱位的剩余座位数(为了数据验证)
+            var changeData = JSON.parse(sessionStorage.getItem("changeData"))
+
+            var checkedCabins = $('input[name="cabin0"]:checked');
+            //判断是否选择了舱位
+            if (checkedCabins.length < 1)
+            {
+                myAlert("请选择航班和舱位");
+                return;
+            }
+
+            flightCabinID = checkedCabins.eq(0).data("flight-cabin-id");
+            seatNums = checkedCabins.eq(0).data("seat-num");
+
+            //判断是否还有座位数
+            if (seatNums < 1)
+            {
+                myAlert("所选航班舱位已无剩余座位，请重新选择！");
+                return;
+            }
+
+            //获取更改原因
+            var strChangeReason = $("#changeReason").val();
+            //当前是否为非自愿更改
+            if (changeData.voluntaryType == 2 && strChangeReason == "") {
+                myAlert("目前为非自愿更改航班，请填写更改原因！")
+                return;
+            }
+
+            //提交请求
+            var layerIndex = layer.load();
+            $.post("/ElectronicsTicket/TicketModify/ChangeFlight",
+        {
+            flightCabinIDs: flightCabinID,//航班舱位ID
+            PNRID: changeData.PNRID,//PNRID
+            intPNRSegmentID: changeData.PNRSegmentID,//原航段ID
+            intETicketID: changeData.eTicketID,//电子客票ID
+            PNRTicketingID: changeData.PNRTicketingID,//出票组ID
+            voluntaryType: changeData.voluntaryType,//是否自愿
+            strChangeReason: strChangeReason//更改原因
+        },function(jsonData){
+            if (jsonData.State) {
+                //清楚更改航班的标志
+                sessionStorage.removeItem("INChangeFlight");
+                //页面跳转
+                window.location.replace("/ElectronicsTicket/TicketModify/OrderInfoShow?ETicketID=" +jsonData.Object);
+            } else {
+                layer.alert(jsonData.Text);
+            }
+        })
+        
+        })
+        
+        //===============ET航段更改======================
+        
+        //将航班时间和日期拼接，用于后续多航段时间判断
+        function timeObjToDateTimeStr(flightDate, timeStart, timeEnd) {
+            var startDate = new Date(flightDate);
+            var endDate = new Date(flightDate);
+            //判断降落时间是否是第二天,如果是+1天
+            if (timeEnd.Ticks < timeStart.Ticks) {
+                endDate.setDate(endDate.getDate() + 1);
+            }
+            //转为将日期和时间转为字符串
+            var strStart = startDate.getFullYear() + "-" + startDate.getMonth() + "-" + startDate.getDate() +
+                " " + timeStart.Hours + ":" + timeStart.Minutes;
+            var strEnd = endDate.getFullYear() + "-" + endDate.getMonth() + "-" + endDate.getDate() +
+                " " + timeEnd.Hours + ":" + timeEnd.Minutes;
+
+            return strStart + ";" + strEnd;
+        }
+    </script>
+</body>
+</html>

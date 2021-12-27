@@ -1,0 +1,400 @@
+﻿
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>PNR显示</title>
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/app-assets/fonts/simple-line-icons/style.css" rel="stylesheet">
+    <style>
+        .btn.disabled, .btn:disabled {
+            color: #dddddd;
+            opacity: .4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mb-4">
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <h2>PNR显示</h2>
+            </div>
+        </div>
+
+        @*PNR操作按钮，大部分默认禁用 根据PNR状态选择性开启*@
+        <div class="row">
+            <div class="col-12">
+                <label class="col-form-label">PNR操作：</label>
+                <button type="button" class="btn btn-sm btn-primary mb-2" id="btnCopyPNR">PNR复制</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnCancelPNR">PNR取消</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnSplitPNR">PNR分离</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnAddPassenger">添加旅客</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnEditPassengerName">修改姓名</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnRemovePassenger">删除旅客</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnAddSegment">添加航段</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnRemoveSegment">删除航段</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs2 bs3" disabled id="btnStrokeDisplay">打印行程</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnIssuanceTicket">出票</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1 bs2" disabled id="btnPartIssuanceTicket">部分出票</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2 bs1" disabled id="btnEditOtherInfo">其他信息修改</button>
+                <button type="button" class="btn btn-sm btn-primary mb-2" onclick="back()">返回</button>
+            </div>
+        </div>
+
+        @*PNR编号 、 PNR状态*@
+        <div class="row">
+            <label class="col-12 col-form-label">
+                <b>PNR:&nbsp;&nbsp;<span id="spanPNRNo"></span>&nbsp;&nbsp;<span id="spanPNRStatus"></span></b>
+            </label>
+        </div>
+
+        @*PNR旅客信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>旅客</th>
+                    <th>旅客类型</th>
+                    <th>证件类型</th>
+                    <th>证件号码</th>
+                    <th>常旅客号</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPassenger">
+                @* 旅客信息 *@
+            </tbody>
+        </table>
+
+        @*PNR航段信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>航段号</th>
+                    <th>航班号</th>
+                    <th>始发地 - 目的地</th>
+                    <th>起飞 - 到达</th>
+                    <th>日期</th>
+                    <th>舱位等级</th>
+                    <th>价格(人民币)</th>
+                    <th>座位数</th>
+                    <th>航段类型</th>
+                </tr>
+            </thead>
+            <tbody id="tbodySegment">
+                @* PNR航段航班信息 *@
+
+            </tbody>
+        </table>
+
+        @*PNR联系组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>联系组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyContact">
+                @* 联系组信息 *@
+            </tbody>
+        </table>
+
+        @*PNR其他信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>其他信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyOtherInfo">
+                @* 其他信息 *@
+
+            </tbody>
+        </table>
+
+        @*PNR出票组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>出票组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyTicketingInfos">
+                @* 出票组信息 *@
+
+            </tbody>
+        </table>
+
+    </div>
+
+    <script src="~/Content/js/jquery-3.2.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+
+    <script>
+        var PNRID=@ViewBag.PNRID;
+        var layer;
+        var totalPassengerNo=0;//旅客数量
+        var totalSegmentNum=0;//航段数
+        $(function(){
+            //加载和初始化layui模块
+            layui.use('layer',function(){
+                layer=layui.layer;
+
+                //发送请求
+                var layerIndex=layer.load();
+                $.post("SelectPNRInfo",{
+                    PNRID:PNRID
+                },function(jsonData) {
+                    //关闭加载层
+                    layer.close(layerIndex);
+
+                    console.log(jsonData);
+                    //获取控制器返回的Json数据
+                    var pnrInfor = jsonData.pnrInfor;
+                    var passengerInfors = jsonData.listPassengerInfor;
+                    var flightCabinInfors = jsonData.listflightCabinInfo;
+                    var otherInfors = jsonData.listPNROtherInfo;
+                    var ticketingInfors = jsonData.listPNRTicketing;
+
+                    console.log(pnrInfor);
+                    console.log(passengerInfors);
+                    console.log(flightCabinInfors);
+                    console.log(otherInfors);
+                    console.log(ticketingInfors);
+
+                    //将PNR数据回填到页面
+                    //序号
+                    var totalRowIndex=1;
+
+                    //1. 根据PNR状态(ID)启用部分按钮
+                    //0-PNR已经取消，除PNR复制以外的按钮都不可操作；1：PNR生成后默认状态，即已经订座（HK）未出票 ,2:部分出票，3：全部出票，0：取消订座   -1：pnr删除
+                    if(pnrInfor.PNRStatus==1){
+                        $(".bs1").removeAttr("disabled");
+                    }
+                    if(pnrInfor.PNRStatus==2){
+                        $(".bs2").removeAttr("disabled");
+                    }
+                    if(pnrInfor.PNRStatus==3){
+                        $(".bs3").removeAttr("disabled");
+                    }
+
+                    //2-PNR信息
+                    $("#spanPNRNo").text(pnrInfor.PNRNo.trim());//PNR编号
+                    $("#spanPNRStatus").text("("+pnrInfor.strPNRStatus+")");//PNR状态("+pnrInfor.strPNRStatus+")
+
+                    //3-旅客组信息
+                    totalPassengerNo=passengerInfors.length;
+                    $.each(passengerInfors,function(index,passenger){
+                        var ptr=$("<tr></tr>");//创建元素
+                        ptr.append('<td>'+(totalRowIndex++)+'</td>');//序号
+                        ptr.append('<td>'+passenger.passengerName+'</td>');//旅客
+                        ptr.append('<td>'+passenger.passengerType+'</td>');//旅客类型
+                        ptr.append('<td>'+passenger.certificatesType+'</td>');//证件类型
+                        ptr.append('<td>'+passenger.certificatesCode+'</td>');//证件号码
+                        ptr.append('<td>'+passenger.frequentPassengerNo+'</td>');//常旅客号
+
+                        //添加到旅客组表tbodyPassenger中
+                        $("#tbodyPassenger").append(ptr);
+                    })
+
+                    //4-航班航段信息
+                    totalSegmentNum =flightCabinInfors.length;
+                    $.each(flightCabinInfors,function(index,flightCabin){
+                        var ftr=$("<tr></tr>");//创建元素
+                        ftr.append('<td>'+(totalRowIndex++)+'</td>');//序号
+                        ftr.append('<td>'+flightCabin.segmentNo+'</td>');//航段号
+                        ftr.append('<td>'+flightCabin.flightCode+'</td>');//航班号
+                        ftr.append('<td>'+flightCabin.orangeCity+"-"+flightCabin.destinationCity+'</td>');//始发地--目的地
+                        ftr.append('<td>'+flightTimeToStr(flightCabin.departureTime,flightCabin.arrivalTime)+'</td>');//起飞时间--到达时间
+                        var dtflightDate=flightCabin.flightDate;
+                        var flightDate=new Date(parseInt(dtflightDate.substr(6,13)));
+                        ftr.append('<td>'+flightDate.getFullYear()+'-'+(flightDate.getMonth()+1)+'-'+flightDate.getDate()+'</td>');//日期
+                        ftr.append('<td>'+flightCabin.cabinTypeName+'</td>');//舱位等级
+                        ftr.append('<td>'+flightCabin.cabinPrice+'</td>');//价格
+                        ftr.append('<td>'+flightCabin.seatNum+'</td>');//座位数
+                        ftr.append('<td>'+flightCabin.segmentTypeStr+'</td>');//航段类型
+
+                        //添加到航班航段表tbodySegment中
+                        $("#tbodySegment").append(ftr);
+                    })
+
+                    //5-联系组
+                    var ctr=$("<tr></tr>");
+                    ctr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');//序号
+                    ctr.append('<td>'+pnrInfor.contactName+' '+pnrInfor.contactPhone+'</td>');//联系人信息
+
+                    $("#tbodyContact").append(ctr);
+
+                    //6-其他信息tbodyOtherInfo
+                    $.each(otherInfors,function(index,otherInfo){
+                        var otr=$("<tr></tr>");
+                        otr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');//序号
+                        otr.append('<td">'+otherInfo.otherInfo+'</td>');//其他信息
+
+                        $("#tbodyOtherInfo").append(otr);
+                    })
+
+                    //7-出票组tbodyTicketingInfos
+                    var ttr=$("<tr></tr>");
+                    ttr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');//序号
+                    ttr.append('<td>'+pnrInfor.TicketingInfo+'</td>');//
+                    //添加到出票组tbody中
+                    $("#tbodyTicketingInfos").append(ttr);
+
+                    $.each(ticketingInfors,function(index,ticketingInfor){
+                        var tr=$("<tr></tr>");
+                        tr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');//序号
+                        tr.append('<td> OSI MU TKNO '+ticketingInfor.ticketNo.replace("-","")+'/S'+ticketingInfor.segmentNo+'/P'+ticketingInfor.passengerNo)
+
+                        $("#tbodyTicketingInfos").append(tr);
+                    })
+                });
+            })
+
+            //=======================PNR操作按钮=======================
+            //1-PNR复制
+            $("#btnCopyPNR").click(function(){
+                openUrl("CopyPNR?PNRID="+PNRID);
+            })
+
+            //2-PNR取消
+            $("#btnCancelPNR").click(function(){
+                layer.confirm("确认要取消该PNR吗？（该操作不可撤回）",{icon:0,title:"提示"},function(index) {
+                    layer.close(index);
+
+                    var layerIndex=layer.load();
+                    //提交请求
+                    $.post("cancelPNR",{
+                        PNRID:PNRID,
+                    },function(jsonData){
+                        layer.close(layerIndex);
+                        myAlert(jsonData.Text,'提示',1);
+                        if(jsonData.State){
+                            window.location.reload();
+                        }
+
+                    });
+
+
+                })
+
+            })
+
+            //3-PNR分离
+            $("#btnSplitPNR").click(function(){
+                //判断旅客数量是否大于1
+                if(totalPassengerNo>1){
+                    openUrl("SplitPNR?PNRID="+PNRID);
+                }else{
+                    myAlert("该PNR下只有一位旅客，不能继续删除旅客。如果不需要该PNR，可以考虑取消PNR。");
+                }
+
+            });
+
+            //4-添加旅客
+            $("#btnAddPassenger").click(function(){
+                //判断旅客数量是否小于9
+                if(totalPassengerNo<9){
+                    openUrl("addPassengerPage?PNRID="+PNRID);
+                }else{
+                    myAlert("旅客人数最多不能超过9位");
+                }
+
+            })
+
+            //5-修改姓名
+            $("#btnEditPassengerName").click(function(){
+                openUrl("EditPassengerName?PNRID="+PNRID);
+            });
+
+            //6-删除旅客
+            $("#btnRemovePassenger").click(function(){
+                if(totalPassengerNo==1){
+                    myAlert("当前旅客人数只有1位,无法删除",'提示',0);
+                    return;
+                }
+                openUrl("RemovePassenger?PNRID="+PNRID);
+            });
+
+            //7-添加航段
+            $("#btnAddSegment").click(function(){
+                if(totalSegmentNum<5){
+                    //在sessionStorage设置一个标志,标志为 “添加航段”
+                    sessionStorage.setItem("addSegment","true");
+                    //将当前的PNRID保存到sessionStorage中
+                    sessionStorage.setItem("addSegment_PNRID",PNRID);
+                    //将该PNR的航段数保存到sessionStorage
+                    sessionStorage.setItem("addSegment_pnrSegmentNum",totalSegmentNum);
+                    //将该PNR旅客数保存到sessionStorage中
+                    sessionStorage.setItem("addSegment_pnrPassengerNum",totalPassengerNo);
+
+                    openUrl("@Url.Content("~/PNR/PNRAppointment/Index")");
+                }
+                else
+                {
+                    myAlert("该PNR的航段数已经到达最大（每个PNR最多只能有5个航段）");
+                }
+            });
+
+            //8-删除航段
+            $("#btnRemoveSegment").click(function()
+            {
+                if(totalSegmentNum>1)
+                {
+                    openUrl("removeSegmentPage?PNRID="+PNRID);
+                }else
+                {
+                    myAlert("该PNR下只有一个航段，不能继续删除航段。如果不需要该PNR，可以考虑取消PNR。");
+                }
+            
+            
+            })
+
+            //9-出票
+            $("#btnIssuanceTicket").click(function()
+            {
+                //打开PNR预订中的PNR信息确认页面
+                openUrl("/PNR/PNRAppointment/PnrInfoConfirm?PNRID="+PNRID);
+            })
+
+            //10-部分出票
+            $("#btnPartIssuanceTicket").click(function()
+            {
+                openUrl("PartIssuanceTicket?PNRID="+PNRID);
+            })
+
+            //11-其他信息修改
+            $("#btnEditOtherInfo").click(function(){
+                openUrl("EditOtherInfo?PNRID="+PNRID);
+            })
+
+            //12-打印行程
+            $("#btnStrokeDisplay").click(function()
+            {
+                openUrl("/PNR/StrokeDisplay/checkFlight?PNRID="+PNRID,"_blank");
+            })
+        });
+
+        //返回按钮
+        function back(PNRID) {
+            window.location.replace("@Url.Content("~/PNR/PNRQuery/PNRQuery?PNRID=")"+PNRID);
+            //window.location.replace("PNRQuery?PNRID=" + PNRID);
+        }
+        //页面跳转
+        function openUrl(url){
+            window.location.replace(url);
+        }
+    </script>
+</body>
+</html>

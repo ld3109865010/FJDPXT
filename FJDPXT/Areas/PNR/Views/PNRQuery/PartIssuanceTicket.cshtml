@@ -1,0 +1,389 @@
+﻿@using FJDPXT.Model
+@using FJDPXT.EntityClass
+
+@{
+    Layout = null;
+
+    //获取传递到页面的数据
+    B_PNR pnrInfo = ViewBag.pnrInfor;//PNR基本信息（PNR编号、联系人、出票组）
+    List<PassengerVo> passengerInfors = ViewBag.listPassengerInfor;//旅客信息
+    List<FlightCabinInfo> flightCabinInfors = ViewBag.listflightCabinInfo;//航班舱位信息
+    List<B_PNROtherInfo> PNROtherInfors = ViewBag.listPNROtherInfo;//PNR其他信息
+    VirtualAccountVo virtualAccount = ViewBag.dbVirtualAccount;//虚拟账户信息
+    List<int> ticketingPassengerIDs = ViewBag.ticketingPassengerIDs;//已出票PNRPassengerID集
+
+    //全局索引计数
+    int globalIndex = 1;
+
+    //单个旅客的总价格 = 各个航段航班舱位价格之和
+    decimal passengerTotalPrice = 0;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>部分出票</title>
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/app-assets/fonts/simple-line-icons/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <h2>PNR信息确认</h2>
+            </div>
+        </div>
+        @*PNR编号*@
+        <div class="row">
+            <label class="col-12 col-form-label">
+                <b>PNR:&nbsp;&nbsp;<span>@pnrInfo.PNRNo</span></b>
+            </label>
+        </div>
+        @*旅客信息*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">选择</th>
+                    <th width="60">序号</th>
+                    <th>旅客</th>
+                    <th>旅客类型</th>
+                    <th>证件类型</th>
+                    <th>证件号码</th>
+                    <th>常旅客号</th>
+                </tr>
+            </thead>
+            <tbody>
+                @*遍历生成旅客信息*@
+                @foreach (PassengerVo passengerInfor in passengerInfors)
+                {
+                    <tr>
+                        <td>
+                            @*判断是否已经在出票旅客列表中，如果在就不再次选择*@
+                            @if (ticketingPassengerIDs.Contains(passengerInfor.PNRPassengerID))
+                            {
+                                <span>已出</span>
+                            }
+                            else
+                            {
+                                <input type="checkbox" name="passenger" data-passenger-id="@passengerInfor.PNRPassengerID" />
+                            }
+                        </td>
+                        <td>@(globalIndex++)</td>
+                        <td>@passengerInfor.passengerName</td>
+                        <td>@passengerInfor.passengerType</td>
+                        <td>@passengerInfor.certificatesType</td>
+                        <td>@passengerInfor.certificatesCode</td>
+                        <td>@passengerInfor.frequentPassengerNo</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @*航班信息*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>航段号</th>
+                    <th>航班号</th>
+                    <th>始发地 - 目的地</th>
+                    <th>起飞 - 到达</th>
+                    <th>日期</th>
+                    <th>舱位等级</th>
+                    <th>价格(人民币)</th>
+                    <th>座位数</th>
+                    <th>航段类型</th>
+                </tr>
+            </thead>
+            <tbody>
+                @*遍历生成航班舱位信息*@
+                @foreach (FlightCabinInfo flightCabinInfor in flightCabinInfors)
+                {
+                    //计算单个旅客总价格
+                    passengerTotalPrice += flightCabinInfor.cabinPrice;
+                    //把航班的起飞时间和到达时间转化成字符串 TimeSpan转字符串
+                    string strDeparturetime = flightCabinInfor.departureTime.Value.ToString(@"hh\:mm");
+                    string strArrivaltime = flightCabinInfor.arrivalTime.Value.ToString(@"hh\:mm");
+                    //判断是否为第二天
+                    bool isNextDay = flightCabinInfor.arrivalTime.Value.TotalMinutes < flightCabinInfor.departureTime.Value.TotalMinutes;
+                    <tr>
+                        <td>@(globalIndex++)</td>
+                        <td>@flightCabinInfor.segmentNo</td>
+                        <td>@flightCabinInfor.flightCode</td>
+                        <td>@flightCabinInfor.orangeCity 到 @flightCabinInfor.destinationCity</td>
+                        <td>
+                            @strDeparturetime - @strArrivaltime
+                            @if (isNextDay)
+                            {
+                                @Html.Raw("<sup class=\"text-danger\">+1</sup>")
+                            }
+                        </td>
+                        <td>@flightCabinInfor.flightDate.Value.ToString("yyyy-MM-dd")</td>
+                        <td>@flightCabinInfor.cabinTypeName</td>
+                        <td>@flightCabinInfor.cabinPrice</td>
+                        <td>@flightCabinInfor.seatNum</td>
+                        <td>@flightCabinInfor.segmentType</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @*联系人 联系电话*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>联系组信息</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">@(globalIndex++)</td>
+                    <td>@pnrInfo.contactName  @pnrInfo.contactPhone</td>
+                </tr>
+            </tbody>
+        </table>
+        @*其他信息*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>其他信息</th>
+                </tr>
+            </thead>
+            <tbody>
+                @*遍历生成PNR其他信息*@
+                @foreach (B_PNROtherInfo PNROtherInfor in PNROtherInfors)
+                {
+                    <tr>
+                        <td>@(globalIndex++)</td>
+                        <td>@PNROtherInfor.otherInfo</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @*出票组信息*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>出票组信息</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">@(globalIndex++)</td>
+                    <td>@pnrInfo.TicketingInfo</td>
+                </tr>
+            </tbody>
+        </table>
+
+        @*支付表单*@
+        <div class="card mt-4 mb-4" id="divFormPay">
+            <div class="card-body">
+                <form class="row" id="formPay">
+                    <input type="hidden" name="PNRID" value="@pnrInfo.PNRID" />
+                    <input type="hidden" name="payType" id="payType" />
+                    <div class="col-12">
+                        @*票价 和 代理费*@
+                        <div class="row">
+                            @*总金额*@
+                            <label class="col-3 col-md-2 col-xl-1 col-form-label text-right pl-0 pr-0">票价</label>
+                            <div class="col-9 col-md-4 col-xl-5">
+                                <div class="input-group">
+                                    <input type="text" readonly class="form-control" value="" name="totalPrice" id="totalPrice" />
+                                    <div class="input-group-prepend">
+                                        <div class="input-group-text">元</div>
+                                    </div>
+                                </div>
+                            </div>
+                            @* 计算代理费 总金额*3%*@
+                            <label class="col-3 col-md-2 col-xl-1 mt-3 mt-md-0 col-form-label text-right pl-0 pr-0">代理费</label>
+                            <div class="col-9 col-md-4 col-xl-5 mt-3 mt-md-0">
+                                <input type="number" class="form-control" value=" " min="0" name="agencyFee" id="agencyFee" />
+                            </div>
+                        </div>
+                        @*账号 和 账户余额*@
+                        <div class="row mt-3">
+                            <label class="col-3 col-md-2 col-xl-1 col-form-label text-right pl-0 pr-0">账号</label>
+                            <div class="col-9 col-md-4 col-xl-5">
+                                <input type="text" readonly class="form-control" value="@virtualAccount.account" />
+                            </div>
+                            <label class="col-3 col-md-2 col-xl-1 mt-3 mt-md-0 col-form-label text-right pl-0 pr-0">账户余额</label>
+                            <div class="col-9 col-md-4 col-xl-5 mt-3 mt-md-0">
+                                <div class="input-group">
+                                    <input type="text" readonly class="form-control" value="@virtualAccount.accountBalance" />
+                                    <div class="input-group-prepend">
+                                        <div class="input-group-text">元</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @*支付金额 和 工号*@
+                        <div class="row mt-3">
+                            <label class="col-3 col-md-2 col-xl-1 col-form-label text-right pl-0 pr-0">支付金额</label>
+                            <div class="col-9 col-md-4 col-xl-5">
+                                <div class="input-group">
+                                    @*支付金额 = 总金额 - 代理费*@
+                                    <input type="text" readonly class="form-control" value="" id="payMoney" name="payMoney" />
+                                    <div class="input-group-prepend">
+                                        <div class="input-group-text">元</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <label class="col-3 col-md-2 col-xl-1 mt-3 mt-md-0 col-form-label text-right pl-0 pr-0">工号</label>
+                            <div class="col-9 col-md-4 col-xl-5 mt-3 mt-md-0">
+                                <input type="text" readonly class="form-control" value="@virtualAccount.jobNumber" />
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @*支付按钮*@
+        <div class="row justify-content-center mt-4 mb-5" id="btnDiv">
+            <div class="col-3 col-lg-2" id="divVirtualAccountPay">
+                <button type="button" class="btn btn-primary btn-block" id="btnVirtualAccountPay">虚拟支付</button>
+            </div>
+            <div class="col-3 col-lg-2">
+                <button type="button" class="btn btn-primary btn-block" id="btnBack">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/Content/js/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+    <script>
+        var layer;
+        var PNRID = @pnrInfo.PNRID;
+        //总价格
+        var totalPrice=0;
+        //单个旅客
+        var singlePassengerPrice = @passengerTotalPrice;
+        //虚拟账户余额
+        var accountBalance = @virtualAccount.accountBalance;
+
+        $(function () {
+            //加载&初始化layui模块
+            layui.use(['layer'], function () {
+                layer = layui.layer;
+            });
+
+            //checkbox改变事件
+            $('input[name="passenger"]').change(function(){
+                //声明一个变量来获取被勾选的旅客人数
+                var passengerNum=$('input[name="passenger"]:checked').length
+                
+                //计算需要支付的总票价
+                totalPrice=singlePassengerPrice*passengerNum;
+                $("#totalPrice").val(totalPrice);
+
+                //计算代理费 默认代理费=总价*3%；保留小数点后2位
+                var agencyFee=totalPrice*0.03;
+                $("#agencyFee").val(agencyFee.toFixed(2));
+
+                //计算支付金额 默认支付金额=总价-代理费；
+                var payMoney = totalPrice-agencyFee;
+                $("#payMoney").val(payMoney);
+
+
+                //判断虚拟账户余额是否足够
+                if(accountBalance<payMoney)
+                {
+                    $("#btnVirtualAccountPay").attr("disabled","true");//添加disabled属性
+                }else
+                {
+                    $("#btnVirtualAccountPay").removeAttr("disabled");//移除disabled属性
+                }
+            })
+            
+            ////代理费输入框改变事件
+            $("#agencyFee").change(function(){
+                //获取代理费输入框的值
+                var agencyFee=$(this).val();
+
+                //代理费不能为负数
+                if(agencyFee<0){
+                    layer.alert("代理费不能为负数");
+                    return;
+                }
+
+                //代理费做多保留俩位小数
+                if(!(/^\d+(.\d{0,2})$/).test(agencyFee))
+                {
+                    layer.alert("代理费最多保留俩位小数",{icon:0,title:"提示"});
+                    return;
+                }
+
+                //计算支付金额
+                agencyFee=parseFloat(agencyFee);//转为小数
+                var payMoney=totalPrice-agencyFee;
+                $("#payMoney").val(payMoney);
+            
+                //判断虚拟账户余额是否足够
+                if(accountBalance>payMoney)
+                {
+                    $("#btnVirtualAccountPay").attr("disabled","true");//添加disabled属性
+                }else{
+                    $("#btnVirtualAccountPay").removeAttr("disabled");//移除disabled属性
+                }
+            });
+
+            //虚拟支付按钮
+            $("#btnVirtualAccountPay").click(function(){
+                var checkedPassenger=$('input[name="passenger"]:checked');
+                if(checkedPassenger.length<1)
+                {
+                    myAlert("至少需要选择一位旅客！");
+                    return;
+                }
+
+                //获取选中旅客的ID
+                var checkedPassengerIDs=[];
+                checkedPassenger.each(function(){
+                    checkedPassengerIDs.push($(this).data("passenger-id"));
+                });
+
+                //获取支付表单,并将序列化结果转成对象
+                var objOrder={};
+                $.each($("#formPay").serializeArray(),function(key,value){
+                    objOrder[this.name]=this.value;
+                })
+
+                //获取支付金额,提交申请
+                var payMoney=$("#payMoney").val();
+                layer.confirm("即将从您的账户中支出【"+payMoney+"】元，是否继续？",{icon:3,title:'提示'},function(index){
+                    layer.close(index);
+
+                    var layerIndex=layer.load();
+                    $.post("DoPartIssueTickets",{
+                        order:objOrder,
+                        payType:1,
+                        checkedPassengerIDs:checkedPassengerIDs,
+                        isPart:true//部分出票的标识
+                    },function(jsonData){
+                        layer.close(layerIndex);
+                        //出票成功
+                        layer.confirm(jsonData.Text,{icon:1,title:'提示'},function(index2){
+                            layer.close(index2);
+                        if(jsonData.State){
+                                sessionStorage.setItem("isPartIssuenceTic","true");
+                                //跳转到出票结果页面
+                                window.location .replace("/PNR/PNRAppointment/IssuanceTicketResult?orderId="+jsonData.Object);
+                            };
+                        }) 
+                    })
+                })
+            })
+
+            //返回按钮
+            $("#btnBack").click(function(){
+                window.location.href="PnrInfoShow?PNRID="+PNRID;
+            });
+        });
+    </script>
+</body>
+</html>

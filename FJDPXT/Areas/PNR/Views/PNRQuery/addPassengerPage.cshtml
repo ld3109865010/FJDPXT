@@ -1,0 +1,438 @@
+﻿  @using FJDPXT.Model
+@{
+    Layout = null;
+    int maxAddNum = ViewBag.maxAddNum;//最多可添加旅客数
+    List<S_PassengerType> passengerTypes = ViewBag.passengerType;//旅客类型下拉框数据
+    List<S_CertificatesType> certificatesTypes = ViewBag.certificatesType;//旅客证件类型
+
+    //禁用按钮
+    var btnDisabled = maxAddNum < 1 ? "disabled" : "";
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>添加旅客</title>
+    <link href="~/Content/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-4.1.3-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/app-assets/fonts/simple-line-icons/style.css" rel="stylesheet">
+    <style>
+        body {
+            font-size: 14px;
+        }
+
+        .btn.disabled, .btn:disabled {
+            color: #dddddd;
+            opacity: .4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mb-4">
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <h2>添加旅客</h2>
+            </div>
+        </div>
+
+        @*PNR编号 、 PNR状态*@
+        <div class="row">
+            <label class="col-12 col-form-label">
+                <b>PNR:&nbsp;&nbsp;<span id="spanPNRNo"></span>&nbsp;&nbsp;<span id="spanPNRStatus"></span></b>
+            </label>
+        </div>
+        @*PNR旅客信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>旅客</th>
+                    <th>旅客类型</th>
+                    <th>证件类型</th>
+                    <th>证件号码</th>
+                    <th>常旅客号</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPassenger"></tbody>
+        </table>
+        @*PNR航段信息 table*@
+        <table class="table table-bordered text-center mb-1">
+            <thead>
+                <tr>
+                    <th width="60">序号</th>
+                    <th>航段号</th>
+                    <th>航班号</th>
+                    <th>始发地 - 目的地</th>
+                    <th>起飞 - 到达</th>
+                    <th>日期</th>
+                    <th>舱位等级</th>
+                    <th>价格(人民币)</th>
+                    <th>座位数</th>
+                    <th>航段类型</th>
+                </tr>
+            </thead>
+            <tbody id="tbodySegment"></tbody>
+        </table>
+        @*PNR联系组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>联系组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyContact"></tbody>
+        </table>
+        @*PNR其他信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>其他信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyOtherInfo"></tbody>
+        </table>
+        @*PNR出票组信息 table*@
+        <table class="table table-bordered mb-1">
+            <thead>
+                <tr>
+                    <th width="60" class="text-center">序号</th>
+                    <th>出票组信息</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyTicketingInfos"></tbody>
+        </table>
+
+        @*添加旅客信息部分 *@
+        <div class="card">
+            <div class="card-header justify-content-between">
+                <div class="row justify-content-between">
+                    <h3>添加旅客</h3> <span>最多可以添加 @maxAddNum 个旅客</span>
+                </div>
+            </div>
+            <div class="card-body pt-1" id="cardBodyContent">
+                @*判断可添加最大旅客数*@
+                @if (maxAddNum > 0)
+                {
+                    <div class="row justify-content-end mb-2">
+                        @*添加按钮*@
+                        <button type="button" class="btn btn-sm btn-primary" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i></button>
+                        @*移除按钮*@
+                        <button type="button" class="btn btn-sm btn-primary ml-1" id="btnRemove"><i class="layui-icon layui-icon-delete"></i></button>
+                    </div>
+
+                    @*第一个添加旅客的表单  同时也旅客表单的模板 布局和PNR 预订流程中PNR信息录入的旅客部分是一样的*@
+                int i = 1;
+                <form class="row mb-2" id="@("formPassenger" + i)">
+                    @* 隐藏域 PNR旅客编号*@
+                    <input type="hidden" name="passengerNo" value="@i" />
+                    <div class="col-12">
+                        <div class="row">
+                            <label class="col-1 col-form-label" data-index="index">@i</label>
+                            <label class="col-3 col-lg-2 col-xl-1 col-form-label">旅客姓名<sup class="text-danger">*</sup></label>
+                            <div class="col-8 col-lg-2 col-xl-3">
+                                <input type="text" class="form-control" name="passengerName" placeholder="填写旅客姓名" />
+                            </div>
+                            <div class="col-11 col-lg-2 offset-1 offset-lg-0  mt-2 mt-lg-0">
+                                <select class="form-control" name="passengerTypeID">
+                                    <option value="0">---请选择---</option>
+                                    @foreach (S_PassengerType passengerType in passengerTypes)
+                                    {
+                                        <option value="@passengerType.passengerTypeID">@passengerType.passengerType</option>
+                                    }
+                                </select>
+                            </div>
+                            <label class="col-3 col-lg-2 col-xl-1 offset-1 offset-lg-0 mt-2 mt-lg-0 col-form-label">证件类型<sup class="text-danger">*</sup></label>
+                            <div class="col-8 col-lg-3 col-xl-4  mt-2 mt-lg-0">
+                                <select class="form-control" name="certificatesTypeID">
+                                    <option value="0">---请选择---</option>
+                                    @foreach (S_CertificatesType certificatesType in certificatesTypes)
+                                    {
+                                        <option value="@certificatesType.certificatesTypeID">@certificatesType.certificatesType</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-1">
+                            <div class="col-1"></div>
+                            <label class="col-3 col-lg-2 col-xl-1 col-form-label">常旅客号:</label>
+                            <div class="col-8 col-lg-2 col-xl-3">
+                                <input type="text" class="form-control" name="frequentPassengerNo" placeholder="没有常旅客卡号的请不填" />
+                            </div>
+                            <label class="col-3 col-lg-2 col-xl-1 offset-1 offset-lg-2 mt-2 mt-lg-0 col-form-label">证件号码<sup class="text-danger">*</sup></label>
+                            <div class="col-8 col-lg-3 col-xl-4 mt-2 mt-lg-0">
+                                <input type="text" class="form-control" name="certificatesCode" placeholder="填写旅客证件号" />
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                }
+                else
+                {
+                    <p class="text-danger">旅客人数以经到达上限，不能再添加旅客！</p>
+                }
+            </div>
+        </div>
+
+        <div class="row justify-content-center mt-4 mb-4">
+            <div class="col-4 col-md-3 col-lg-2">
+                <button type="button" class="btn btn-primary btn-block" id="btnAddPassenger" @btnDisabled>添加旅客</button>
+            </div>
+            <div class="col-3 col-md-3 col-lg-2">
+                <button type="button" class="btn btn-primary btn-block" id="btnBack">返回</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="~/Content/js/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/layui/layui.js"></script>
+    <script src="~/Content/js/customfunction.js"></script>
+    <script>
+        var PNRID = @ViewBag.PNRID;
+        var layer;
+        var maxAddNum=@ViewBag.maxAddNum;//最多可添加的旅客数量
+        var passengerNum = maxAddNum > 0 ? 1 : 0;//旅客序号，从1开始
+        $(function(){
+            //加载&初始化layui模块
+            layui.use(['layer'],function(){
+                layer = layui.layer;
+
+                //加载数据 ==同PNR复制页面
+                var layIndex = layer.load();
+                $.post("@Url.Content("~/PNR/PNRQuery/SelectPNRInfo")",{ PNRID : PNRID },
+                    function(jsonData){
+                        //关闭加载层
+                        layer.close(layIndex);
+
+                        //获取控制器返回的Json数据
+                        var pnrInfor = jsonData.pnrInfor;
+                        var passengerInfors = jsonData.listPassengerInfor;
+                        var flightCabinInfors = jsonData.listflightCabinInfo;
+                        var otherInfors = jsonData.listPNROtherInfo;
+                        var ticketingInfors = jsonData.listPNRTicketing;
+
+                        //console.log(pnrInfor);
+                        //console.log(passengerInfors);
+                        //console.log(flightCabinInfor);
+                        //console.log(otherInfor);
+
+                        //将PNR数据回填到页面
+                        //序号
+                        var totalRowIndex = 1;
+
+                        //1. PNR信息
+                        $("#spanPNRNo").text(pnrInfor.PNRNo.trim());//PNR编号
+                        $("#spanPNRStatus").text("("+pnrInfor.strPNRStatus+")");//PNR状态
+
+                        //2. 旅客组信息
+                        $.each(passengerInfors,function(index,passenger){
+                            var pTr=$("<tr></tr>");
+                            pTr.append('<td>'+(totalRowIndex++)+'</td>');//序号
+                            pTr.append('<td>'+passenger.passengerName+'</td>');//旅客姓名
+                            pTr.append('<td>'+passenger.passengerType+'</td>');//旅客类型
+                            pTr.append('<td>'+passenger.certificatesType+'</td>');//证件类型
+                            pTr.append('<td>'+passenger.certificatesCode+'</td>');//证件号
+                            pTr.append('<td>'+passenger.frequentPassengerNo+'</td>');//常旅客号
+
+                            //添加到旅客组表tbody中
+                            $("#tbodyPassenger").append(pTr);
+                        });
+
+                        //4. 航段航班信息
+                        $.each(flightCabinInfors,function(index,flightCabin){
+                            var fTr=$("<tr></tr>");
+                            fTr.append('<td>'+(totalRowIndex++)+'</td>');
+                            fTr.append('<td>'+flightCabin.segmentNo+'</td>');
+                            fTr.append('<td>'+flightCabin.flightCode+'</td>');
+                            fTr.append('<td>'+flightCabin.orangeCity+'-'+flightCabin.destinationCity+'</td>');
+                            fTr.append('<td>'+flightTimeToStr(flightCabin.departureTime,flightCabin.arrivalTime)+'</td>');
+                            //航班日期
+                            var strDate = flightCabin.flightDate;// /Date(1576252800000)/
+                            var flightDate = new Date(parseInt(strDate.substr(6,13)));// 1576252800000-->Date
+                            fTr.append('<td>'+flightDate.getFullYear()+'-'+(flightDate.getMonth()+1)+'-'+flightDate.getDate()+'</td>');
+                            fTr.append('<td>'+flightCabin.cabinTypeName+'</td>');
+                            fTr.append('<td>'+flightCabin.cabinPrice+'</td>');
+                            fTr.append('<td>'+flightCabin.seatNum+'</td>');
+                            fTr.append('<td>'+flightCabin.segmentTypeStr+'</td>');
+
+                            //添加到航段航班信息表tbody中
+                            $("#tbodySegment").append(fTr);
+                        });
+
+                        //5. 联系组
+                        var cTr = $("<tr></tr>");
+                        cTr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');
+                        cTr.append('<td>'+pnrInfor.contactName+' '+pnrInfor.contactPhone+'</td>');
+                        //添加到联系人组tbody中
+                        $("#tbodyContact").append(cTr);
+
+                        //6. 其他信息tbodyOtherInfo
+                        $.each(otherInfors,function(index,otherInfo){
+                            var oTr = $("<tr></tr>");
+                            oTr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');
+                            oTr.append('<td>'+otherInfo.otherInfo+'</td>');
+
+                            //添加到其他组tbody中
+                            $("#tbodyOtherInfo").append(oTr);
+                        });
+
+                        //7. 出票组tbodyTicketingInfos
+                        var ticketingTr = $("<tr></tr>");
+                        ticketingTr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');
+                        ticketingTr.append('<td>'+pnrInfor.TicketingInfo+'</td>');
+                        //添加到出票组tbody中
+                        $("#tbodyTicketingInfos").append(ticketingTr);
+
+                        //遍历出票组信息
+                        $.each(ticketingInfors,function(index,ticketingInfor){
+                            var tr=$("<tr></tr>");
+                            tr.append('<td class="text-danger text-center">*</td>');
+                            tr.append('<td class="text-center">'+(totalRowIndex++)+'</td>');
+                            //电子客票编号+航段编号+旅客编号
+                            tr.append('<td> OSI MU TKNO '+ticketingInfor.ticketNo.replace("-","")+
+                                      '/S'+ticketingInfor.segmentNo+'/P'+ticketingInfor.passengerNo+'</td>');
+
+                            $("#tbodyTicketingInfos").append(tr);
+                        });
+                    });
+            });
+
+            //添加旅客“+”
+            $("#btnAdd").click(function(){
+                if(passengerNum<maxAddNum){
+                    passengerNum++;
+                    //获取模板即第一个添加旅客的表单
+                    var formPassenger1=$("#formPassenger1");
+
+                    //复制模板
+                    var frPassengerNew=formPassenger1.clone();
+                    console.log(frPassengerNew);
+                    //重置获得的表单(克隆是有数据的)
+                    frPassengerNew[0].reset();
+                    //修改表单的ID
+                    frPassengerNew.prop("id","formPassenger"+passengerNum);
+                    //修改旅客编号的val
+                    frPassengerNew.find('[name="passengerNo"]').val(passengerNum);
+                    //修改序号
+                    frPassengerNew.find('[data-index="index"]').text(passengerNum);
+                    //将复制的表单放到容器中
+                    $("#cardBodyContent").append(frPassengerNew);
+                }else{
+                    myAlert("最多可以添加 【 " + maxAddNum + " 】 位旅客");
+                }
+            });
+
+            //删除旅客按钮"-"
+            $("#btnRemove").click(function(){
+                if(passengerNum>1){
+                    var lastPassenger=$("#formPassenger"+passengerNum);
+                    lastPassenger.remove();
+                    passengerNum--;
+                
+                }else{
+                    myAlert("至少添加【1】位旅客");
+                }
+            })
+            
+            //提交申请"添加旅客"
+            $("#btnAddPassenger").click(function(){
+                //检查是否有可增加旅客(可不判断 html中已有相同判断)
+                if(maxAddNum<1){
+                    myAlert("本航班已经没有多余的位置，无法添加旅客！");
+                    return;
+                }
+
+                //获取添加的旅客信息
+                //声明存放旅客信息的数组
+                var passengerInfors=[];
+                for (var i = 1; i <=passengerNum; i++) {
+                    //单个旅客信息
+                    var passenger={};
+                    //遍历各个表单,序列化表单数据
+                    $.each($("#formPassenger"+i).serializeArray(),function(index,item){
+                        passenger[item.name]=item.value;
+                    });
+                    passengerInfors.push(passenger);     
+                }
+                
+                //数据验证
+                //1-检查旅客个数
+                if(passengerInfors.length<1){
+                    myAlert("请添加旅客!");
+                    return;
+                }
+
+                //2-检查输入的旅客信息
+                for (var i = 0; i < passengerInfors.length; i++) {
+                    //判断名字是否填写
+                    if(passengerInfors[i].passengerName==undefined || passengerInfors[i].passengerName==""){
+                        myAlert("请填写第【"+(i+1)+"】个旅客的姓名！");
+                        return;
+                    }
+                    //判断旅客类型的ID是否为0
+                    if(passengerInfors[i].passengerTypeID==0){
+                        myAlert("请选择第【"+(i+1)+"】个旅客的旅客类型！");
+                        return;
+                    }
+                    //判断证件类型ID是否为0
+                    if(passengerInfors[i].certificatesTypeID==0){
+                        myAlert("请选择第【"+(i+1)+"】个旅客的证件类型！");
+                        return;
+                    }
+
+                    //如果证件类型为“身份证”,验证身份证号是否正确
+                    if(passengerInfors[i].certificatesTypeID==1 && !idCardNo(passengerInfors[i].certificatesCode)){
+                        myAlert("请检查第【"+(i+1)+"】位旅客的身份证号！");
+                        return;
+                    }
+
+                    //根据旅客身份证号得到年龄，再与旅客类型比较是否相符
+                    if(passengerInfors[i].certificatesTypeID==1){
+                        var age=getAgeByIdCard(passengerInfors[i].certificatesCode)
+                        if(passengerInfors[i].passengerTypeID==1 && age<18){
+                            myAlert("第【"+(i+1)+"】位旅客的年龄小于18岁，与所选的揽客类型【成人】不符，请检查！");
+                            return;
+                        }
+                        if (passengerInfors[i].passengerTypeID == 2 && age >18 ) {
+                            myAlert("第【"+(i+1)+"】位旅客的年龄大于18岁，与所选的揽客类型【儿童】不符，请检查！");
+                            return;
+                        }
+                        //检查身份证是否相同
+                        for (var j = i+1; j <passengerInfors.length; j++) {
+                            if(passengerInfors[i].certificatesCode == passengerInfors[j].certificatesCode){
+                                myAlert("第【" + (i + 1) + "】个和第【" + (j + 1) + "】个乘客的身份证号相同，请检查;");
+                                return;
+                            }
+                        }
+                    }
+                }
+                //发送请求
+                var layerIndex=layer.load();
+                $.post("addPNRPassenger",{
+                    passengerInfors:passengerInfors,
+                    PNRID:PNRID,
+                },function(jsonData){
+                    layer.close(layerIndex);
+                    myAlert(jsonData.Text);
+                    if(jsonData.State){
+                        window.location.href="pnrInfoShow?PNRID="+PNRID;
+                    }
+                })
+            })
+
+
+
+
+            //返回
+            $("#btnBack").click(function(){
+                window.location.href="PnrInfoShow?PNRID="+PNRID;
+            });
+        });
+    </script>
+</body>
+</html>
