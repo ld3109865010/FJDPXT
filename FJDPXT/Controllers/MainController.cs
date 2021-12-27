@@ -77,7 +77,7 @@ namespace FJDPXT.Controllers
 
             //==1.2-验证用户输入的验证码和session中的验证码是是否相同 忽略大小写
             validCode = validCode == null ? "" : validCode.Trim();
-            //if (sessionValidCode.Equals(validCode, StringComparison.InvariantCultureIgnoreCase))
+            //if (sessionValidCode.Equals(validCode, StringComparison.InvariantCultureIgnoreCase) )
             //{
                 //===2-验证用户的工号和密码是否匹配
                 //==2.1-查询登录的用户数据 Linq
